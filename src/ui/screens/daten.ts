@@ -61,6 +61,28 @@ export function bauDaten(kontext: UiKontext): Screen {
   dateiLabel.htmlFor = 'datei-import';
   dateiLabel.appendChild(dateiFeld);
   importKarte.appendChild(dateiLabel);
+
+  // Am iPhone ist eine Datei in die Files-App zu bekommen umständlicher als
+  // Text zu kopieren. Deshalb zusätzlich der direkte Weg über die Zwischenablage.
+  const einfuegenAufklapp = el('details', 'aufklapp');
+  einfuegenAufklapp.appendChild(el('summary', 'aufklapp-titel', 'Stattdessen Text einfügen'));
+  einfuegenAufklapp.appendChild(
+    el('p', 'hinweis', 'Inhalt einer Sicherung hier einfügen — praktisch, wenn die Datei nicht auf dem Gerät liegt.'),
+  );
+  const einfuegenFeld = el('textarea', 'einfuege-feld');
+  einfuegenFeld.rows = 5;
+  einfuegenFeld.placeholder = '{ "schemaVersion": 2, … }';
+  einfuegenFeld.setAttribute('aria-label', 'Sicherung als Text einfügen');
+  einfuegenFeld.setAttribute('autocapitalize', 'off');
+  einfuegenFeld.setAttribute('autocorrect', 'off');
+  einfuegenFeld.spellcheck = false;
+  einfuegenAufklapp.appendChild(einfuegenFeld);
+  einfuegenAufklapp.appendChild(
+    knopf('Aus Text wiederherstellen', 'knopf-zweit knopf-breit', () => {
+      void ausTextImportieren(einfuegenFeld.value);
+    }),
+  );
+  importKarte.appendChild(einfuegenAufklapp);
   wurzel.appendChild(importKarte);
 
   // ------------------------------------------------------------- Zurücksetzen
@@ -116,7 +138,25 @@ export function bauDaten(kontext: UiKontext): Screen {
     if (!datei) return;
 
     try {
-      const text = await datei.text();
+      await uebernehmen(await datei.text());
+    } finally {
+      // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
+      dateiFeld.value = '';
+    }
+  }
+
+  /** Wiederherstellen aus eingefügtem Text — derselbe Prüfpfad wie bei einer Datei. */
+  async function ausTextImportieren(roh: string): Promise<void> {
+    meldung.leeren();
+    if (roh.trim() === '') {
+      meldung.zeigen('Bitte zuerst den Inhalt einer Sicherung einfügen.', 'fehler');
+      return;
+    }
+    await uebernehmen(roh);
+  }
+
+  async function uebernehmen(text: string): Promise<void> {
+    try {
       const daten = importierenAusJson(text);
       const anzahl = Array.isArray(daten.monate) ? daten.monate.length : 0;
       if (
@@ -128,12 +168,10 @@ export function bauDaten(kontext: UiKontext): Screen {
         return;
       }
       await store.ersetzen(daten);
+      einfuegenFeld.value = '';
       meldung.zeigen('Import erfolgreich.');
     } catch (fehler: unknown) {
       meldung.zeigen(`Import fehlgeschlagen: ${nutzerTextAus(fehler)}`, 'fehler');
-    } finally {
-      // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
-      dateiFeld.value = '';
     }
   }
 

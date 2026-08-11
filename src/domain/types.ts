@@ -5,12 +5,32 @@
  * Feldnamen tragen konsequent das Suffix `Cent`.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/**
+ * Kreditangaben zu einem Fixkostenposten. Optional — die meisten Posten sind
+ * Daueraufträge ohne Ende.
+ *
+ * ANNAHME: zinsfrei. Restschuld = Rate × Laufzeit − gezahlte Raten − Sondertilgung.
+ * Für einen verzinsten Kredit bräuchte es den effektiven Jahreszins und eine
+ * Tilgungsplan-Rechnung; solange keiner hinterlegt ist, wäre jede Zinsformel geraten.
+ */
+export interface Kredit {
+  /** Gesamtzahl der Raten, z. B. 60. */
+  laufzeitMonate: number;
+  /** Monat der ersten Rate. Der Tag im Monat ist für die Monatszählung ohne Belang. */
+  startJahr: number;
+  startMonat: number; // 1..12
+  /** Bereits geleistete oder geplante Sondertilgung. 0, wenn keine. */
+  sondertilgungCent: number;
+}
 
 export interface Fixkostenposten {
   id: string;
   name: string;
   betragCent: number;
+  /** Gesetzt, wenn dieser Posten ein Kredit mit Laufzeitende ist. */
+  kredit?: Kredit;
 }
 
 export interface Monatseintrag {

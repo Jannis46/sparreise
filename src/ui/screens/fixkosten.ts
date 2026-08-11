@@ -12,7 +12,8 @@
 
 import { nutzerTextAus } from '../../storage/adapter';
 import { formatCent, parseEuroZuCent } from '../../domain/geld';
-import type { AppDaten } from '../../domain/types';
+import { kreditstand } from '../../domain/kredit';
+import type { AppDaten, Fixkostenposten } from '../../domain/types';
 import {
   bestaetigen,
   betragFeld,
@@ -127,6 +128,138 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     );
   }
 
+  // ------------------------------------------------------------- Kredit
+
+  const MONATSNAMEN = [
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+  ];
+
+  /**
+   * Kreditbereich eines Postens: Restschuld, verbleibende Raten, voraussichtliches
+   * Ende — und ein Feld zum Durchspielen einer Sondertilgung.
+   *
+   * Der eingetippte Betrag rechnet sofort durch, wird aber erst beim Speichern
+   * übernommen. So kann man gefahrlos ausprobieren, ohne den echten Stand zu ändern.
+   */
+  function kreditBlock(posten: Readonly<Fixkostenposten>): HTMLElement {
+    const jetzt = new Date();
+    const heuteJahr = jetzt.getFullYear();
+    const heuteMonat = jetzt.getMonth() + 1;
+
+    const aufklapp = el('details', 'aufklapp kredit-block');
+    const titel = el('summary', 'aufklapp-titel', 'Kredit & Sondertilgung');
+    aufklapp.appendChild(titel);
+
+    const anzeige = el('div', 'kredit-anzeige');
+    aufklapp.appendChild(anzeige);
+
+    // Probewert: undefined = gespeicherten Stand zeigen.
+    let probeCent: number | undefined;
+
+    // Rohtext statt `lesen()`: `lesen()` würde das Feld schon beim Tippen als
+    // fehlerhaft markieren, solange die Eingabe noch unvollständig ist ("1,").
+    const rohWert = (): string => probeFeld.el.querySelector('input')?.value ?? '';
+
+    const probeFeld: BetragFeld = betragFeld({
+      label: 'Sondertilgung durchspielen',
+      wertCent: posten.kredit?.sondertilgungCent ?? 0,
+      hinweis: 'Betrag eintippen — die Rechnung darunter aktualisiert sich sofort. Erst „Übernehmen" speichert.',
+      beiEingabe: () => {
+        const cent = parseEuroZuCent(rohWert());
+        probeCent = cent === null ? undefined : Math.max(0, cent);
+        zeichnen();
+      },
+      beiGueltig: () => {
+        /* Übernahme läuft bewusst nur über den Knopf. */
+      },
+    });
+    aufklapp.appendChild(probeFeld.el);
+
+    aufklapp.appendChild(
+      knopf('Sondertilgung übernehmen', 'knopf-zweit knopf-breit', () => {
+        const cent = parseEuroZuCent(rohWert());
+        if (cent === null) {
+          meldung.zeigen('Bitte einen gültigen Betrag eintragen.', 'fehler');
+          return;
+        }
+        const alt = posten.kredit;
+        if (!alt) return;
+        void store
+          .fixkostenAendern(posten.id, {
+            kredit: { ...alt, sondertilgungCent: Math.max(0, cent) },
+          })
+          .then(() => meldung.zeigen('Sondertilgung gespeichert.'))
+          .catch((fehler: unknown) => meldung.zeigen(nutzerTextAus(fehler), 'fehler'));
+      }),
+    );
+
+    function zeichnen(): void {
+      leeren(anzeige);
+      const stand = kreditstand(posten, heuteJahr, heuteMonat, probeCent);
+      if (!stand) {
+        anzeige.appendChild(el('p', 'hinweis', 'Keine gültigen Kreditangaben hinterlegt.'));
+        return;
+      }
+
+      const k = posten.kredit!;
+      anzeige.appendChild(
+        el(
+          'p',
+          'hinweis',
+          `${k.laufzeitMonate} Raten ab ${MONATSNAMEN[k.startMonat - 1]} ${k.startJahr} · ` +
+            `Gesamtsumme ${formatCent(stand.gesamtCent)} (zinsfrei gerechnet)`,
+        ),
+      );
+
+      if (stand.abbezahlt) {
+        anzeige.appendChild(wertZeile('Restschuld', formatCent(0), 'wertzeile-stark'));
+        anzeige.appendChild(el('p', 'hinweis', 'Vollständig getilgt.'));
+        return;
+      }
+
+      anzeige.appendChild(
+        wertZeile(
+          stand.nochNichtGestartet ? 'Noch nicht begonnen — offen' : 'Restschuld',
+          formatCent(stand.restschuldCent),
+          'wertzeile-stark',
+        ),
+      );
+      anzeige.appendChild(
+        wertZeile(`Gezahlte Raten (${stand.gezahlteRaten})`, formatCent(stand.gezahltCent)),
+      );
+      if (stand.sondertilgungCent > 0) {
+        anzeige.appendChild(wertZeile('Sondertilgung', formatCent(stand.sondertilgungCent)));
+      }
+      anzeige.appendChild(
+        wertZeile(
+          'Verbleibende Raten',
+          stand.letzteRateCent > 0 && stand.letzteRateCent !== Math.abs(posten.betragCent)
+            ? `${stand.verbleibendeRaten} (letzte ${formatCent(stand.letzteRateCent)})`
+            : String(stand.verbleibendeRaten),
+        ),
+      );
+      if (stand.endeJahr !== null && stand.endeMonat !== null) {
+        anzeige.appendChild(
+          wertZeile('Voraussichtlich fertig', `${MONATSNAMEN[stand.endeMonat - 1]} ${stand.endeJahr}`),
+        );
+      }
+      if (stand.ersparteMonate > 0) {
+        anzeige.appendChild(
+          el(
+            'p',
+            'kredit-ersparnis',
+            `${stand.ersparteMonate} ${stand.ersparteMonate === 1 ? 'Monat' : 'Monate'} früher fertig — ` +
+              `danach bleiben ${formatCent(Math.abs(posten.betragCent))} pro Monat mehr übrig.`,
+          ),
+        );
+      }
+    }
+
+    zeichnen();
+    return aufklapp;
+  }
+
   // ------------------------------------------------------------- Liste
 
   function listeZeichnen(): void {
@@ -173,6 +306,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
       );
 
       block.append(name.el, fuss);
+      if (posten.kredit) block.appendChild(kreditBlock(posten));
       postenBereich.appendChild(block);
       zeilen.push({ id: posten.id, name, betrag });
     }

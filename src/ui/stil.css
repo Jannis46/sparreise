@@ -780,3 +780,44 @@ button:focus-visible {
     transition: background-color 0.15s ease, color 0.15s ease, opacity 0.12s ease;
   }
 }
+
+/* ---------------------------------------------------------------- Kredit */
+
+.kredit-block {
+  margin-top: 10px;
+}
+
+.kredit-anzeige {
+  margin: 4px 0 10px;
+}
+
+.kredit-ersparnis {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--akzent-schwach);
+  color: var(--tinte);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* Textfeld zum Einfügen einer Sicherung. 16px Minimum, sonst zoomt iOS beim Fokus. */
+.einfuege-feld {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  background: var(--flaeche);
+  color: var(--tinte);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.einfuege-feld:focus {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
+}

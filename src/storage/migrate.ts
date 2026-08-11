@@ -20,6 +20,7 @@ import {
   type AppDaten,
   type Einstellungen,
   type Fixkostenposten,
+  type Kredit,
   type Monatseintrag,
 } from '../domain/types';
 
@@ -38,11 +39,14 @@ const GEFAEHRLICHE_SCHLUESSEL: readonly string[] = ['__proto__', 'constructor', 
 
 /**
  * Migrationsschritte für spätere Schemaversionen: `[von] => Daten der Version von+1`.
- * Solange SCHEMA_VERSION === 1 ist die Tabelle leer.
- * Beispiel: MIGRATIONEN.set(1, (d) => ({ ...d, schemaVersion: 2, neuesFeld: 0 }));
  */
 type Migration = (daten: Record<string, unknown>) => Record<string, unknown>;
 const MIGRATIONEN = new Map<number, Migration>();
+
+// v1 → v2: Fixkostenposten können optional Kreditangaben tragen (Laufzeit,
+// Startmonat, Sondertilgung). Alte Datensätze haben schlicht keine — es ist
+// nichts umzurechnen, nur die Version anzuheben.
+MIGRATIONEN.set(1, (d) => ({ ...d, schemaVersion: 2 }));
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert);
@@ -82,16 +86,39 @@ function cent(wert: unknown): number | null {
   return ganzzahl(wert, -MAX_CENT, MAX_CENT);
 }
 
+/**
+ * Kreditangaben eines Postens prüfen. Alles Unplausible führt dazu, dass der Posten
+ * einfach **kein** Kredit ist — nie dazu, dass der ganze Posten verworfen wird.
+ */
+function kreditPruefen(roh: unknown): Kredit | undefined {
+  if (!istObjekt(roh)) return undefined;
+  const laufzeitMonate = ganzzahl(roh['laufzeitMonate'], 1, 1200); // max. 100 Jahre
+  const startJahr = ganzzahl(roh['startJahr'], MIN_JAHR, MAX_JAHR);
+  const startMonat = ganzzahl(roh['startMonat'], 1, 12);
+  if (laufzeitMonate === null || startJahr === null || startMonat === null) return undefined;
+
+  const sonder = cent(roh['sondertilgungCent']);
+  return {
+    laufzeitMonate,
+    startJahr,
+    startMonat,
+    sondertilgungCent: sonder === null || sonder < 0 ? 0 : sonder,
+  };
+}
+
 function fixkostenPruefen(roh: unknown, vergebeneIds: Set<string>): Fixkostenposten | null {
   if (!istObjekt(roh)) return null;
   const betragCent = cent(roh['betragCent']);
   if (betragCent === null) return null; // ohne Betrag ist der Posten wertlos
   const name = text(roh['name'], MAX_NAME_LAENGE);
-  return {
+  const posten: Fixkostenposten = {
     id: idPruefen(roh['id'], vergebeneIds),
     name: name === null || name === '' ? 'Unbenannt' : name,
     betragCent,
   };
+  const kredit = kreditPruefen(roh['kredit']);
+  if (kredit) posten.kredit = kredit;
+  return posten;
 }
 
 /** Ungültige oder doppelte IDs werden ersetzt — doppelte IDs würden die UI verwirren. */

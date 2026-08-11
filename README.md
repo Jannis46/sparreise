@@ -14,7 +14,12 @@ Gebaut für die Nutzung am iPhone: einhändig, unterwegs, in Eile.
   Nachträglich änder- und löschbar.
 - **Fortschritt** über Etappen bei 1.000 / 3.000 / 6.000 / 10.000 €, mit
   Verlaufsdiagramm für ETF und Tagesgeld getrennt.
-- **Export und Import** als JSON-Datei — das ist die Sicherung.
+- **Kredite** mit Laufzeit: Restschuld, verbleibende Raten und voraussichtliches Ende.
+  Eine Sondertilgung lässt sich erst durchspielen — die Rechnung aktualisiert sich beim
+  Tippen — und dann übernehmen. Gerechnet wird **zinsfrei**: Gesamtsumme = Rate × Laufzeit.
+- **Export und Import** als JSON-Datei — das ist die Sicherung. Alternativ lässt sich
+  der Inhalt direkt einfügen, was am Telefon meist schneller geht als eine Datei
+  durch die Dateien-App zu schleusen.
 
 ## Datenschutz
 
