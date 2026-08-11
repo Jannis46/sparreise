@@ -56,20 +56,38 @@ export function sortierteMonate(daten: Readonly<AppDaten>): Monatseintrag[] {
 }
 
 /** Vermögen des jüngsten Monatseintrags. Ohne Einträge: 0. */
-function aktuellesVermoegenCent(daten: Readonly<AppDaten>): number {
+export function aktuellesVermoegenCent(daten: Readonly<AppDaten>): number {
   const monate = sortierteMonate(daten);
   const letzter = monate.length > 0 ? monate[monate.length - 1] : undefined;
   return letzter ? vermoegenCent(letzter) : 0;
 }
 
 /**
- * Etappenliste inklusive Fortschritt, bezogen auf das Vermögen des jüngsten Monats.
+ * Höchstes je erfasstes Vermögen (Bestmarke). Ohne Einträge: 0.
+ *
+ * ENTSCHEIDUNG: Die Etappen richten sich nach dieser Bestmarke, nicht nach dem
+ * aktuellen Stand. Ein ETF-Depot schwankt; eine erreichte Etappe soll deshalb
+ * nicht wieder auf „nicht erreicht" zurückfallen, nur weil der Kurs nachgibt.
+ * Der aktuelle Stand bleibt über `aktuellesVermoegenCent` sichtbar — die
+ * Übersicht zeigt beides, wenn sie auseinanderlaufen.
+ */
+export function hoechstesVermoegenCent(daten: Readonly<AppDaten>): number {
+  let hoechst = 0;
+  for (const eintrag of sortierteMonate(daten)) {
+    const wert = vermoegenCent(eintrag);
+    if (wert > hoechst) hoechst = wert;
+  }
+  return hoechst;
+}
+
+/**
+ * Etappenliste inklusive Fortschritt, bezogen auf die **Bestmarke** (siehe oben).
  * `anteil` ist der Fortschritt innerhalb der jeweiligen Etappe (von der vorherigen
  * Schwelle bis `zielCent`), geklemmt auf 0..1 — nie NaN, nie Infinity.
  * Ohne Monatseinträge steht alles auf 0 (nur die Startetappe bei 0 € gilt als erreicht).
  */
 export function etappen(daten: Readonly<AppDaten>): Etappe[] {
-  const vermoegen = aktuellesVermoegenCent(daten);
+  const vermoegen = hoechstesVermoegenCent(daten);
 
   return ETAPPEN_SCHWELLEN_CENT.map((zielCent, index) => {
     const vorherCent = index > 0 ? (ETAPPEN_SCHWELLEN_CENT[index - 1] as number) : 0;

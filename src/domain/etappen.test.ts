@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   ETAPPEN_SCHWELLEN_CENT,
+  aktuellesVermoegenCent,
   etappen,
+  hoechstesVermoegenCent,
   sortierteMonate,
   veraenderungCent,
   vermoegenCent,
@@ -323,20 +325,60 @@ describe('etappen — über der letzten Schwelle', () => {
 });
 
 describe('etappen — negatives Vermögen', () => {
+  // Die Etappen richten sich nach der Bestmarke, und die ist nie kleiner als 0.
+  // Ein negativer Stand lässt deshalb nur die Nulletappe stehen — er stürzt
+  // nicht ab und erzeugt keine negativen Anteile.
   it('stürzt nicht ab und klemmt anteil auf 0', () => {
     const e = etappen(mitVermoegen(-500000));
 
     expect(e).toHaveLength(5);
-    expect(e.map((x) => x.anteil)).toEqual([0, 0, 0, 0, 0]);
-    expect(e.map((x) => x.erreicht)).toEqual([false, false, false, false, false]);
+    expect(e.map((x) => x.anteil)).toEqual([1, 0, 0, 0, 0]);
+    expect(e.map((x) => x.erreicht)).toEqual([true, false, false, false, false]);
     expect(e.map((x) => x.erreichtCent)).toEqual([0, 0, 0, 0, 0]);
   });
 
-  it('minus ein Cent verfehlt bereits die Startetappe', () => {
+  it('minus ein Cent erzeugt keinen negativen Anteil', () => {
     const e = etappen(mitVermoegen(-1));
-    expect(e[0]?.erreicht).toBe(false);
-    expect(e[0]?.anteil).toBe(0);
-    expect(Object.is(e[0]?.anteil, -0)).toBe(false);
+    expect(e[1]?.erreicht).toBe(false);
+    expect(e[1]?.anteil).toBe(0);
+    expect(Object.is(e[1]?.anteil, -0)).toBe(false);
+  });
+});
+
+describe('etappen — Bestmarke rutscht nicht zurück', () => {
+  it('bleibt erreicht, wenn das Depot später fällt', () => {
+    const daten = mitMonaten([
+      monat({ jahr: 2026, monat: 1, etfDepotCent: 100000, tagesgeldCent: 0 }),
+      monat({ jahr: 2026, monat: 2, etfDepotCent: 350000, tagesgeldCent: 0 }), // Hoch
+      monat({ jahr: 2026, monat: 3, etfDepotCent: 120000, tagesgeldCent: 0 }), // Absturz
+    ]);
+    const e = etappen(daten);
+    // Bestmarke 3.500,00 € → Etappen bei 0, 1.000 und 3.000 bleiben erreicht.
+    expect(e.map((x) => x.erreicht)).toEqual([true, true, true, false, false]);
+    expect(hoechstesVermoegenCent(daten)).toBe(350000);
+    // Der aktuelle Stand bleibt separat abrufbar und zeigt den Absturz.
+    expect(aktuellesVermoegenCent(daten)).toBe(120000);
+  });
+
+  it('Bestmarke ohne Einträge ist 0', () => {
+    expect(hoechstesVermoegenCent(mitMonaten([]))).toBe(0);
+  });
+
+  it('findet das Hoch unabhängig von der Array-Reihenfolge', () => {
+    const daten = mitMonaten([
+      monat({ jahr: 2026, monat: 3, etfDepotCent: 50000, tagesgeldCent: 0 }),
+      monat({ jahr: 2026, monat: 1, etfDepotCent: 900000, tagesgeldCent: 0 }),
+      monat({ jahr: 2026, monat: 2, etfDepotCent: 60000, tagesgeldCent: 0 }),
+    ]);
+    expect(hoechstesVermoegenCent(daten)).toBe(900000);
+  });
+
+  it('zählt ETF und Tagesgeld zusammen', () => {
+    const daten = mitMonaten([
+      monat({ jahr: 2026, monat: 1, etfDepotCent: 200000, tagesgeldCent: 200000 }), // 4.000
+      monat({ jahr: 2026, monat: 2, etfDepotCent: 300000, tagesgeldCent: 0 }), // 3.000
+    ]);
+    expect(hoechstesVermoegenCent(daten)).toBe(400000);
   });
 });
 

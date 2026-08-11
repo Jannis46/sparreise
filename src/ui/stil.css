@@ -896,3 +896,13 @@ button:focus-visible {
 .monats-inhalt {
   padding: 0 0 12px;
 }
+
+.etappe-hinweis {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--flaeche-2);
+  color: var(--text-leise);
+  font-size: 15px;
+  line-height: 1.4;
+}

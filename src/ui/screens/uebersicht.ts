@@ -7,7 +7,14 @@
 
 import { TIER_TEXT } from '../../storage/adapter';
 import { formatCent } from '../../domain/geld';
-import { etappen, sortierteMonate, veraenderungCent, vermoegenCent } from '../../domain/etappen';
+import {
+  aktuellesVermoegenCent,
+  etappen,
+  hoechstesVermoegenCent,
+  sortierteMonate,
+  veraenderungCent,
+  vermoegenCent,
+} from '../../domain/etappen';
 import type { Etappe } from '../../domain/etappen';
 import type { Monatseintrag } from '../../domain/types';
 import { linienChart, ringFortschritt } from '../../chart/chart';
@@ -101,8 +108,12 @@ export function bauUebersicht(kontext: UiKontext): Screen {
 
       const text = el('div', 'etappe-text');
       text.appendChild(el('p', 'etappe-name', etappe.name));
-      const gesamt = letzter ? vermoegenCent(letzter) : 0;
-      const rest = etappe.zielCent - gesamt;
+      // Bezugspunkt der Etappen ist die Bestmarke — sie rutscht nicht zurück,
+      // wenn das Depot fällt. Der Rest bis zum Ziel muss dieselbe Basis benutzen,
+      // sonst widersprechen sich Ring und Text.
+      const bestmarke = hoechstesVermoegenCent(daten);
+      const aktuell = aktuellesVermoegenCent(daten);
+      const rest = etappe.zielCent - bestmarke;
       text.appendChild(
         el(
           'p',
@@ -114,6 +125,19 @@ export function bauUebersicht(kontext: UiKontext): Screen {
       );
       reihe.appendChild(text);
       etappenKarte.appendChild(reihe);
+
+      // Ehrlich bleiben: liegt der aktuelle Stand unter der Bestmarke, muss das
+      // sichtbar sein — sonst suggeriert die Etappe mehr, als gerade da ist.
+      if (aktuell < bestmarke) {
+        etappenKarte.appendChild(
+          el(
+            'p',
+            'etappe-hinweis',
+            `Gemessen an deiner Bestmarke von ${formatCent(bestmarke)}. ` +
+              `Aktuell stehst du bei ${formatCent(aktuell)} — erreichte Etappen bleiben trotzdem erreicht.`,
+          ),
+        );
+      }
       wurzel.appendChild(etappenKarte);
     }
 
