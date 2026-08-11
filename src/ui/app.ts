@@ -22,11 +22,15 @@ import { bauUebersicht } from './screens/uebersicht';
 import { bauErfassen } from './screens/erfassen';
 import { bauFixkosten } from './screens/fixkosten';
 import { bauVerteilung } from './screens/verteilung';
+import { bauStatistik } from './screens/statistik';
 import { bauDaten } from './screens/daten';
 
 interface TabDefinition {
   id: ScreenId;
-  /** Kurz genug, dass fünf Tabs auch bei 320px nebeneinander passen. */
+  /**
+   * Kurz genug, dass sechs Tabs auch bei 320px nebeneinander passen —
+   * 320 / 6 ≈ 53px, also weiter über den geforderten 44px Touch-Ziel.
+   */
   kurz: string;
   titel: string;
   unter: string;
@@ -60,6 +64,12 @@ const TABS: readonly TabDefinition[] = [
     unter: 'Was jeden Monat wohin geht',
   },
   {
+    id: 'statistik',
+    kurz: 'Statistik',
+    titel: 'Statistik',
+    unter: 'Auswertung pro Monat und Jahr',
+  },
+  {
     id: 'daten',
     kurz: 'Daten',
     titel: 'Daten & Sicherung',
@@ -72,6 +82,7 @@ const BAUER: Readonly<Record<ScreenId, (kontext: UiKontext) => Screen>> = {
   erfassen: bauErfassen,
   fixkosten: bauFixkosten,
   verteilung: bauVerteilung,
+  statistik: bauStatistik,
   daten: bauDaten,
 };
 

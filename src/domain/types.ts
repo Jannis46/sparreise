@@ -5,7 +5,7 @@
  * Feldnamen tragen konsequent das Suffix `Cent`.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Kreditangaben zu einem Fixkostenposten. Optional — die meisten Posten sind
@@ -33,6 +33,16 @@ export interface Fixkostenposten {
   kredit?: Kredit;
 }
 
+/**
+ * Feste monatliche Einnahme neben dem Netto-Gehalt — Nebenjob, Kindergeld, BAföG.
+ * Zählt in jedem Monat gleich mit ins Verfügbare.
+ */
+export interface Einnahmeposten {
+  id: string;
+  name: string;
+  betragCent: number;
+}
+
 export interface Monatseintrag {
   id: string;
   jahr: number; // z.B. 2026
@@ -41,6 +51,9 @@ export interface Monatseintrag {
   tagesgeldCent: number; // Tagesgeld gesamt
   sonderausgabeCent?: number;
   sonderausgabeNotiz?: string;
+  /** Einmalige Einnahme in diesem Monat — Bonus, Steuerrückzahlung, Verkauf. */
+  sondereinnahmeCent?: number;
+  sondereinnahmeNotiz?: string;
   erfasstAm: number; // Date.now()
 }
 
@@ -55,6 +68,8 @@ export interface Einstellungen {
 export interface AppDaten {
   schemaVersion: number;
   fixkosten: Fixkostenposten[];
+  /** Feste Einnahmen zusätzlich zum Netto-Gehalt. Leer, solange es keine gibt. */
+  einnahmen: Einnahmeposten[];
   einstellungen: Einstellungen;
   monate: Monatseintrag[];
 }
@@ -117,6 +132,7 @@ export function startDaten(): AppDaten {
       name,
       betragCent,
     })),
+    einnahmen: [],
     einstellungen: { ...EINSTELLUNGEN_START },
     monate: [],
   };

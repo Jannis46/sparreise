@@ -821,3 +821,78 @@ button:focus-visible {
   outline: 2px solid var(--akzent);
   outline-offset: 1px;
 }
+
+/* ------------------------------------------------------------- Statistik */
+
+.jahr-block {
+  padding: 0 0 6px;
+  margin: 0 0 14px;
+  border-bottom: 1px solid var(--rand);
+}
+
+.jahr-block:last-child {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.jahr-titel {
+  margin: 0 0 6px;
+  font-size: 21px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.wertzeile-plus .wertzeile-wert {
+  color: var(--plus);
+}
+
+/* Monatsliste: aufklappbare Zeilen statt Tabelle — bei 390px hätte eine
+   Tabelle mit fünf Spalten jede Zahl auf drei Zeichen gequetscht. */
+.monats-eintrag {
+  border-bottom: 1px solid var(--rand);
+}
+
+.monats-eintrag:last-child {
+  border-bottom: 0;
+}
+
+.monats-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 0;
+  cursor: default;
+  list-style: none;
+}
+
+.monats-kopf::-webkit-details-marker {
+  display: none;
+}
+
+.monats-name {
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.monats-wert {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-leise);
+}
+
+.monats-plus {
+  color: var(--plus);
+}
+
+.monats-minus {
+  color: var(--minus);
+}
+
+.monats-inhalt {
+  padding: 0 0 12px;
+}

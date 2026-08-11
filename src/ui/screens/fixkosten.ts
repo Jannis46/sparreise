@@ -84,8 +84,31 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     },
     beiEingabe: summeZeichnen,
   });
-  weitereKarte.append(studiumFeld.el, einkommenFeld.el);
+  weitereKarte.append(einkommenFeld.el, studiumFeld.el);
   wurzel.appendChild(weitereKarte);
+
+  // ------------------------------------------------------------- Weitere Einnahmen
+  const einnahmenKarte = karte('Weitere Einnahmen');
+  einnahmenKarte.appendChild(
+    el(
+      'p',
+      'hinweis',
+      'Feste monatliche Einnahmen neben dem Gehalt — Nebenjob, Kindergeld, BAföG. Erhöhen das Verfügbare.',
+    ),
+  );
+  const einnahmenBereich = el('div', 'posten-liste');
+  einnahmenKarte.appendChild(einnahmenBereich);
+  einnahmenKarte.appendChild(
+    knopf('Einnahme hinzufügen', 'knopf-zweit knopf-breit', () => {
+      void store.einnahmeHinzufuegen('', 0).catch((fehler: unknown) => {
+        meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+      });
+    }),
+  );
+  wurzel.appendChild(einnahmenKarte);
+
+  let einnahmeZeilen: PostenZeile[] = [];
+  let gezeichneteEinnahmeIds = '';
 
   // ------------------------------------------------------------- Rechnen
 
@@ -105,26 +128,42 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     return summe;
   }
 
+  function summeEinnahmen(): number {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.einnahmen) ? daten.einnahmen : [];
+    let summe = 0;
+    for (const zeile of einnahmeZeilen) {
+      const posten = liste.find((p) => p.id === zeile.id);
+      summe += feldOderGespeichert(zeile.betrag, posten ? posten.betragCent : 0);
+    }
+    return summe;
+  }
+
   function summeZeichnen(): void {
     const einstellungen = store.getDaten().einstellungen;
     const fixkosten = summeFixkosten();
     const studium = feldOderGespeichert(studiumFeld, einstellungen.studiumCent);
-    const einkommen = feldOderGespeichert(einkommenFeld, einstellungen.einkommenCent);
+    const gehalt = feldOderGespeichert(einkommenFeld, einstellungen.einkommenCent);
+    const weitere = summeEinnahmen();
+    const einkommen = gehalt + weitere;
+    const bleibt = einkommen - fixkosten - studium;
 
     leeren(summenBereich);
+    summenBereich.appendChild(wertZeile('Netto-Einkommen', formatCent(gehalt)));
+    if (weitere !== 0) {
+      summenBereich.appendChild(
+        wertZeile(`Weitere Einnahmen (${einnahmeZeilen.length})`, formatCent(weitere)),
+      );
+      summenBereich.appendChild(
+        wertZeile('Einnahmen gesamt', formatCent(einkommen), 'wertzeile-stark'),
+      );
+    }
     summenBereich.appendChild(
-      wertZeile(`Fixkosten (${zeilen.length} Posten)`, formatCent(fixkosten)),
+      wertZeile(`− Fixkosten (${zeilen.length} Posten)`, formatCent(fixkosten)),
     );
-    summenBereich.appendChild(wertZeile('Studiengebühren', formatCent(studium)));
+    summenBereich.appendChild(wertZeile('− Studiengebühren', formatCent(studium)));
     summenBereich.appendChild(
-      wertZeile('Gesamt', formatCent(fixkosten + studium), 'wertzeile-stark'),
-    );
-    summenBereich.appendChild(
-      wertZeile(
-        'Bleibt vom Einkommen',
-        formatCent(einkommen - fixkosten - studium),
-        einkommen - fixkosten - studium < 0 ? 'wertzeile-minus' : '',
-      ),
+      wertZeile('Bleibt übrig', formatCent(bleibt), `wertzeile-stark${bleibt < 0 ? ' wertzeile-minus' : ''}`),
     );
   }
 
@@ -260,6 +299,59 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     return aufklapp;
   }
 
+  // ------------------------------------------------------------- Einnahmen-Liste
+
+  function einnahmenZeichnen(): void {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.einnahmen) ? daten.einnahmen : [];
+    leeren(einnahmenBereich);
+    einnahmeZeilen = [];
+
+    if (liste.length === 0) {
+      einnahmenBereich.appendChild(
+        el('p', 'leer-hinweis', 'Keine weiteren Einnahmen. Nur das Netto-Einkommen zählt.'),
+      );
+      return;
+    }
+
+    for (const posten of liste) {
+      const block = el('div', 'posten');
+
+      const name = textFeld({
+        label: 'Bezeichnung',
+        wert: posten.name,
+        platzhalter: 'z. B. Nebenjob',
+        beiAenderung: (wert) => {
+          void store.einnahmeAendern(posten.id, { name: wert });
+        },
+      });
+
+      const betrag = betragFeld({
+        label: 'Betrag pro Monat',
+        wertCent: posten.betragCent,
+        beiGueltig: (cent) => {
+          void store.einnahmeAendern(posten.id, { betragCent: cent });
+        },
+        beiEingabe: summeZeichnen,
+      });
+
+      const fuss = el('div', 'posten-fuss');
+      fuss.appendChild(betrag.el);
+      fuss.appendChild(
+        symbolKnopf('×', `${posten.name || 'Einnahme'} löschen`, () => {
+          if (!bestaetigen(`"${posten.name || 'Einnahme ohne Namen'}" wirklich löschen?`)) return;
+          void store.einnahmeEntfernen(posten.id).catch((fehler: unknown) => {
+            meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+          });
+        }),
+      );
+
+      block.append(name.el, fuss);
+      einnahmenBereich.appendChild(block);
+      einnahmeZeilen.push({ id: posten.id, name, betrag });
+    }
+  }
+
   // ------------------------------------------------------------- Liste
 
   function listeZeichnen(): void {
@@ -327,6 +419,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
   }
 
   listeZeichnen();
+  einnahmenZeichnen();
   summeZeichnen();
 
   return {
@@ -334,7 +427,15 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     aktualisieren(): void {
       // Nur neu bauen, wenn sich die Zusammensetzung geändert hat. Sonst würde ein
       // Speichervorgang mitten im Tippen die Felder unter den Fingern wegziehen.
-      if (idsVon(store.getDaten()) !== gezeichneteIds) listeZeichnen();
+      const daten = store.getDaten();
+      if (idsVon(daten) !== gezeichneteIds) listeZeichnen();
+      const einnahmeIds = (Array.isArray(daten.einnahmen) ? daten.einnahmen : [])
+        .map((p) => p.id)
+        .join('|');
+      if (einnahmeIds !== gezeichneteEinnahmeIds) {
+        einnahmenZeichnen();
+        gezeichneteEinnahmeIds = einnahmeIds;
+      }
       summeZeichnen();
     },
   };

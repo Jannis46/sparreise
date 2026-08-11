@@ -19,6 +19,7 @@ import {
   neueId,
   type AppDaten,
   type Einstellungen,
+  type Einnahmeposten,
   type Fixkostenposten,
   type Kredit,
   type Monatseintrag,
@@ -47,6 +48,10 @@ const MIGRATIONEN = new Map<number, Migration>();
 // Startmonat, Sondertilgung). Alte Datensätze haben schlicht keine — es ist
 // nichts umzurechnen, nur die Version anzuheben.
 MIGRATIONEN.set(1, (d) => ({ ...d, schemaVersion: 2 }));
+
+// v2 → v3: feste Zusatzeinnahmen und Sondereinnahmen pro Monat. Alte Sicherungen
+// haben keine — die leere Liste ergänzt die Prüfung weiter unten von selbst.
+MIGRATIONEN.set(2, (d) => ({ ...d, schemaVersion: 3 }));
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert);
@@ -153,7 +158,25 @@ function monatPruefen(roh: unknown, vergebeneIds: Set<string>): Monatseintrag | 
   const notiz = text(roh['sonderausgabeNotiz'], MAX_NOTIZ_LAENGE);
   if (notiz !== null && notiz !== '') eintrag.sonderausgabeNotiz = notiz;
 
+  const sondereinnahmeCent = cent(roh['sondereinnahmeCent']);
+  if (sondereinnahmeCent !== null) eintrag.sondereinnahmeCent = sondereinnahmeCent;
+  const einnahmeNotiz = text(roh['sondereinnahmeNotiz'], MAX_NOTIZ_LAENGE);
+  if (einnahmeNotiz !== null && einnahmeNotiz !== '') eintrag.sondereinnahmeNotiz = einnahmeNotiz;
+
   return eintrag;
+}
+
+/** Feste Zusatzeinnahme. Gleiche Regeln wie ein Fixkostenposten, nur ohne Kredit. */
+function einnahmePruefen(roh: unknown, vergebeneIds: Set<string>): Einnahmeposten | null {
+  if (!istObjekt(roh)) return null;
+  const betragCent = cent(roh['betragCent']);
+  if (betragCent === null) return null;
+  const name = text(roh['name'], MAX_NAME_LAENGE);
+  return {
+    id: idPruefen(roh['id'], vergebeneIds),
+    name: name === null || name === '' ? 'Unbenannt' : name,
+    betragCent,
+  };
 }
 
 /** Einzelne kaputte Einstellung fällt auf den Startwert zurück, statt alles zu verwerfen. */
@@ -206,14 +229,21 @@ function migriereIntern(roh: unknown): AppDaten | null {
   if (!Array.isArray(rohFixkosten) || !Array.isArray(rohMonate)) return null;
   if (rohFixkosten.length > MAX_FIXKOSTEN || rohMonate.length > MAX_MONATE) return null;
 
+  // `einnahmen` gibt es erst ab Schema 3. Fehlt der Schlüssel, ist die Liste leer —
+  // das ist kein Fehler, sondern der Normalfall bei älteren Sicherungen.
+  const rohEinnahmen = daten['einnahmen'] === undefined ? [] : daten['einnahmen'];
+  if (!Array.isArray(rohEinnahmen) || rohEinnahmen.length > MAX_FIXKOSTEN) return null;
+
   const vergebeneIds = new Set<string>();
   const fixkosten = listePruefen(rohFixkosten, (e) => fixkostenPruefen(e, vergebeneIds));
+  const einnahmen = listePruefen(rohEinnahmen, (e) => einnahmePruefen(e, vergebeneIds));
   const monate = listePruefen(rohMonate, (e) => monatPruefen(e, vergebeneIds));
-  if (fixkosten === null || monate === null) return null;
+  if (fixkosten === null || einnahmen === null || monate === null) return null;
 
   return {
     schemaVersion: SCHEMA_VERSION,
     fixkosten,
+    einnahmen,
     einstellungen: einstellungenPruefen(daten['einstellungen']),
     monate,
   };

@@ -5,7 +5,7 @@
 
 import type { Store } from '../state/store';
 
-export type ScreenId = 'uebersicht' | 'erfassen' | 'fixkosten' | 'verteilung' | 'daten';
+export type ScreenId = 'uebersicht' | 'erfassen' | 'fixkosten' | 'verteilung' | 'statistik' | 'daten';
 
 export interface UiKontext {
   readonly store: Store;

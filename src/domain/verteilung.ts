@@ -12,7 +12,12 @@ import { ganzzahlig } from './geld';
  *   fixkostenCent + studiumCent + freizeitCent + etfZusatzCent + uebrigCent === einkommenCent
  */
 export interface Verteilung {
+  /** Netto-Gehalt plus alle festen Zusatzeinnahmen. Basis der gesamten Rechnung. */
   einkommenCent: number;
+  /** Nur das Netto-Gehalt, ohne Zusatzeinnahmen. */
+  gehaltCent: number;
+  /** Summe der festen Zusatzeinnahmen. 0, wenn keine hinterlegt sind. */
+  weitereEinnahmenCent: number;
   /** Summe aller Fixkostenposten. */
   fixkostenCent: number;
   studiumCent: number;
@@ -38,7 +43,17 @@ export interface Verteilung {
 export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
   const e = daten.einstellungen;
 
-  const einkommenCent = ganzzahlig(e.einkommenCent);
+  const gehaltCent = ganzzahlig(e.einkommenCent);
+
+  // Defensiv wie bei den Fixkosten: `einnahmen` fehlt in Sicherungen vor Schema 3.
+  let weitereEinnahmenCent = 0;
+  if (Array.isArray(daten.einnahmen)) {
+    for (const posten of daten.einnahmen) {
+      if (posten) weitereEinnahmenCent += ganzzahlig(posten.betragCent);
+    }
+  }
+
+  const einkommenCent = gehaltCent + weitereEinnahmenCent;
   const studiumCent = ganzzahlig(e.studiumCent);
   const freizeitCent = ganzzahlig(e.freizeitCent);
   const etfZusatzCent = ganzzahlig(e.etfZusatzCent);
@@ -58,6 +73,8 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
 
   return {
     einkommenCent,
+    gehaltCent,
+    weitereEinnahmenCent,
     fixkostenCent,
     studiumCent,
     verfuegbarCent,

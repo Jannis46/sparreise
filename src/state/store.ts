@@ -15,7 +15,13 @@
  *    mit dem neuen Adapter erneut versucht; danach steht der Fehler sichtbar im Status
  */
 
-import type { AppDaten, Einstellungen, Fixkostenposten, Monatseintrag } from '../domain/types';
+import type {
+  AppDaten,
+  Einnahmeposten,
+  Einstellungen,
+  Fixkostenposten,
+  Monatseintrag,
+} from '../domain/types';
 import { neueId } from '../domain/types';
 import type { StorageAdapter, StorageTier } from '../storage/adapter';
 import { nutzerTextAus } from '../storage/adapter';
@@ -130,6 +136,34 @@ export class Store {
     return this.aktualisieren((d) => ({
       ...d,
       fixkosten: d.fixkosten.filter((p) => p.id !== id),
+    }));
+  }
+
+  // ---------------------------------------------------- Weitere Einnahmen
+
+  /** `einnahmen` fehlt in Sicherungen vor Schema 3 — defensiv als leere Liste lesen. */
+  private einnahmenVon(d: Readonly<AppDaten>): Einnahmeposten[] {
+    return Array.isArray(d.einnahmen) ? d.einnahmen : [];
+  }
+
+  einnahmeHinzufuegen(name: string, betragCent: number): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      einnahmen: [...this.einnahmenVon(d), { id: neueId(), name, betragCent }],
+    }));
+  }
+
+  einnahmeAendern(id: string, teil: Partial<Omit<Einnahmeposten, 'id'>>): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      einnahmen: this.einnahmenVon(d).map((p) => (p.id === id ? { ...p, ...teil } : p)),
+    }));
+  }
+
+  einnahmeEntfernen(id: string): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      einnahmen: this.einnahmenVon(d).filter((p) => p.id !== id),
     }));
   }
 

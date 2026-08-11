@@ -120,6 +120,17 @@ export function bauErfassen(kontext: UiKontext): Screen {
   });
   aufklapp.append(sonderFeld.el, notizFeld.el);
   werteKarte.appendChild(aufklapp);
+
+  const einnahmeAufklapp = el('details', 'aufklapp');
+  einnahmeAufklapp.appendChild(el('summary', 'aufklapp-titel', 'Sondereinnahme (optional)'));
+  const einnahmeFeld = betragFeld({ label: 'Betrag', wertCent: 0 });
+  const einnahmeNotizFeld = textFeld({
+    label: 'Woher?',
+    wert: '',
+    platzhalter: 'z. B. Bonus, Steuerrückzahlung',
+  });
+  einnahmeAufklapp.append(einnahmeFeld.el, einnahmeNotizFeld.el);
+  werteKarte.appendChild(einnahmeAufklapp);
   wurzel.appendChild(werteKarte);
 
   // ------------------------------------------------------------- Aktionen
@@ -165,6 +176,18 @@ export function bauErfassen(kontext: UiKontext): Screen {
     sonderFeld.setzen(eintrag && typeof eintrag.sonderausgabeCent === 'number' ? eintrag.sonderausgabeCent : 0);
     notizFeld.setzen(eintrag && typeof eintrag.sonderausgabeNotiz === 'string' ? eintrag.sonderausgabeNotiz : '');
     aufklapp.open = hatSonder;
+
+    const hatEinnahme =
+      eintrag !== null &&
+      ((typeof eintrag.sondereinnahmeCent === 'number' && eintrag.sondereinnahmeCent !== 0) ||
+        (typeof eintrag.sondereinnahmeNotiz === 'string' && eintrag.sondereinnahmeNotiz !== ''));
+    einnahmeFeld.setzen(
+      eintrag && typeof eintrag.sondereinnahmeCent === 'number' ? eintrag.sondereinnahmeCent : 0,
+    );
+    einnahmeNotizFeld.setzen(
+      eintrag && typeof eintrag.sondereinnahmeNotiz === 'string' ? eintrag.sondereinnahmeNotiz : '',
+    );
+    einnahmeAufklapp.open = hatEinnahme;
 
     meldung.leeren();
     zustandZeichnen();
@@ -270,6 +293,21 @@ export function bauErfassen(kontext: UiKontext): Screen {
       }
     }
 
+    let sondereinnahmeCent: number | undefined;
+    let sondereinnahmeNotiz: string | undefined;
+    if (einnahmeAufklapp.open) {
+      const einnahmeCent = einnahmeFeld.lesen();
+      if (einnahmeCent === null) {
+        meldung.zeigen('Bitte prüfe den Betrag der Sondereinnahme.', 'fehler');
+        return;
+      }
+      const notiz = einnahmeNotizFeld.lesen();
+      if (einnahmeCent !== 0 || notiz !== '') {
+        sondereinnahmeCent = einnahmeCent;
+        sondereinnahmeNotiz = notiz === '' ? undefined : notiz;
+      }
+    }
+
     const vorhanden = eintragFuer(jahr, monat);
     try {
       if (vorhanden) {
@@ -280,6 +318,8 @@ export function bauErfassen(kontext: UiKontext): Screen {
           tagesgeldCent,
           sonderausgabeCent,
           sonderausgabeNotiz,
+          sondereinnahmeCent,
+          sondereinnahmeNotiz,
         });
       } else {
         await store.monatHinzufuegen({
@@ -289,6 +329,8 @@ export function bauErfassen(kontext: UiKontext): Screen {
           tagesgeldCent,
           sonderausgabeCent,
           sonderausgabeNotiz,
+          sondereinnahmeCent,
+          sondereinnahmeNotiz,
         });
       }
       meldung.zeigen(`${monatName(monat)} ${jahr} gespeichert.`);
