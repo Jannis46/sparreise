@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover ist Pflicht, sonst greift env(safe-area-inset-*) nicht.
+         Bewusst KEIN user-scalable=no / maximum-scale — Zoom muss möglich bleiben. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Sparreise — private Budget- und Sparziel-App. Läuft offline, ohne Konto, ohne Server." />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0f172a" />
+
+    <!-- iOS-Homescreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sparreise" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Dateien legt der Agent "PWA" in public/ an. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+
+    <title>Sparreise</title>
+
+    <style>
+      /* Nur das Nötigste, damit vor dem ersten Rendern nichts springt.
+         Alles Weitere gehört dem Agent "UI" (eigene CSS-Datei, aus app.ts importiert). */
+      :root {
+        color-scheme: light dark;
+        --safe-oben: env(safe-area-inset-top, 0px);
+        --safe-unten: env(safe-area-inset-bottom, 0px);
+        --safe-links: env(safe-area-inset-left, 0px);
+        --safe-rechts: env(safe-area-inset-right, 0px);
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: Canvas;
+        color: CanvasText;
+        font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        -webkit-text-size-adjust: 100%;
+        overscroll-behavior-y: none;
+      }
+      #app {
+        padding-top: var(--safe-oben);
+        padding-bottom: var(--safe-unten);
+        padding-left: var(--safe-links);
+        padding-right: var(--safe-rechts);
+      }
+      /* Startfehler-Banner aus main.ts — Fehler müssen sichtbar sein, nicht nur in der Konsole. */
+      .start-fehler {
+        margin: 1rem;
+        padding: 1rem;
+        border: 2px solid #b91c1c;
+        border-radius: 0.75rem;
+        background: #fef2f2;
+        color: #7f1d1d;
+        font-size: 1rem;
+      }
+      .start-fehler h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.05rem;
+      }
+      .start-fehler pre {
+        margin: 0.5rem 0 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.8rem;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <noscript>
+      <div class="start-fehler">
+        <h1>JavaScript ist deaktiviert</h1>
+        <p>
+          Sparreise rechnet und speichert vollständig auf deinem Gerät und braucht dafür
+          JavaScript. Bitte aktiviere JavaScript in den Einstellungen deines Browsers und
+          lade die Seite neu.
+        </p>
+      </div>
+    </noscript>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

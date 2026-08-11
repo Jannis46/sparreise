@@ -1,0 +1,782 @@
+/*
+  Sparreise — Oberfläche. Eigentümer: Agent "UI".
+
+  Grundsätze:
+  - iPhone zuerst. Alles ist für einhändige Bedienung bei 320–430px gebaut.
+  - Eine Akzentfarbe (gedecktes Tannengrün), sonst Papier, Tinte und viel Weißraum.
+  - Alle Touch-Ziele >= 44x44px. Alle Eingabefelder >= 16px Schrift (sonst zoomt iOS).
+  - :hover ausschließlich hinter @media (hover: hover).
+  - Kein :has(), keine Container-Queries — Ziel ist iOS Safari 15.
+*/
+
+:root {
+  --nav-hoehe: 60px;
+  --rand-radius: 14px;
+  --spalte: 30rem;
+
+  --papier: #f6f5f2;
+  --flaeche: #ffffff;
+  --flaeche-2: #efedE7;
+  --text: #14181a;
+  --text-leise: #58605f;
+  --rand: #e2dfd8;
+  --akzent: #0e6b58;
+  --akzent-schwach: #e2efeb;
+  --akzent-text: #ffffff;
+  --plus: #0e6b58;
+  --minus: #a3381a;
+  --minus-flaeche: #fbeee9;
+  --minus-rand: #edcbbc;
+  --etf: #0e6b58;
+  --tagesgeld: #8f6316;
+  --diagramm-raster: #e5e2db;
+  --diagramm-text: #58605f;
+  --diagramm-spur: #eceae4;
+  --schatten: 0 1px 2px rgba(20, 24, 26, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papier: #0e1112;
+    --flaeche: #171b1c;
+    --flaeche-2: #1f2426;
+    --text: #eef1f1;
+    --text-leise: #9ba6a5;
+    --rand: #2a3032;
+    --akzent: #52cfb0;
+    --akzent-schwach: #12302a;
+    --akzent-text: #05231d;
+    --plus: #52cfb0;
+    --minus: #ff9d78;
+    --minus-flaeche: #2c1712;
+    --minus-rand: #4d2a1e;
+    --etf: #52cfb0;
+    --tagesgeld: #e2b463;
+    --diagramm-raster: #2a3032;
+    --diagramm-text: #9ba6a5;
+    --diagramm-spur: #23292b;
+    --schatten: none;
+  }
+
+  /* Das Startfehler-Banner aus index.html ist hell gestylt — hier dunkel nachziehen. */
+  .start-fehler {
+    background: var(--minus-flaeche) !important;
+    border-color: var(--minus-rand) !important;
+    color: var(--minus) !important;
+  }
+}
+
+body {
+  background: var(--papier);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Banner, die main.ts nach dem Mounten anhängt, dürfen nicht unter der Leiste liegen. */
+#app > .start-fehler:last-child {
+  margin-bottom: calc(var(--nav-hoehe) + 1rem);
+}
+
+/* Hinweis auf eine neue Version. Sitzt über der Tab-Leiste, damit er im
+   Daumenbereich liegt und die Leiste nicht verdeckt. */
+.update-hinweis {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-hoehe) + var(--safe-unten, 0px) + 10px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--akzent-schwach);
+  border: 1px solid var(--akzent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.update-hinweis p {
+  flex: 1 1 10rem;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.update-hinweis button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--akzent);
+  color: var(--akzent-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.update-hinweis button[disabled] {
+  opacity: 0.6;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.app {
+  padding-bottom: calc(var(--nav-hoehe) + 12px);
+}
+
+/* ------------------------------------------------------------------ Kopf */
+
+.kopf {
+  padding: 14px 16px 6px;
+  max-width: var(--spalte);
+  margin: 0 auto;
+}
+
+.kopf-titel {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  font-weight: 650;
+}
+
+.kopf-unter {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+/* ------------------------------------------------------------------ Inhalt */
+
+.inhalt {
+  display: block;
+  padding: 8px 16px 0;
+  max-width: var(--spalte);
+  margin: 0 auto;
+}
+
+.karte {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--rand-radius);
+  box-shadow: var(--schatten);
+  padding: 16px;
+  margin: 0 0 14px;
+}
+
+.karte-titel {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-leise);
+}
+
+.hinweis {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-leise);
+}
+
+.leer-hinweis {
+  margin: 0 0 12px;
+  color: var(--text-leise);
+  font-size: 16px;
+}
+
+/* Lange Nutzertexte dürfen das Layout nie sprengen. */
+.karte,
+.wertzeile-name,
+.listen-name,
+.meldung,
+.banner-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ Zahlen */
+
+.gross-zahl {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gross-label {
+  margin: 0 0 4px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-leise);
+  font-weight: 650;
+}
+
+.veraenderung {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-leise);
+}
+
+.veraenderung-plus {
+  color: var(--plus);
+}
+
+.veraenderung-minus {
+  color: var(--minus);
+}
+
+.wertzeile {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+.wertzeile:last-child {
+  border-bottom: 0;
+}
+
+.wertzeile-name {
+  color: var(--text-leise);
+  font-size: 16px;
+}
+
+.wertzeile-wert {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wertzeile-stark .wertzeile-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.wertzeile-stark .wertzeile-wert {
+  font-size: 19px;
+}
+
+.wertzeile-minus .wertzeile-wert {
+  color: var(--minus);
+}
+
+/* ------------------------------------------------------------------ Etappe */
+
+.etappe {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.etappe-text {
+  min-width: 0;
+}
+
+.etappe-name {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 620;
+}
+
+.etappe-rest {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--text-leise);
+}
+
+.diagramm {
+  margin-top: 4px;
+  max-width: 100%;
+}
+
+/* ------------------------------------------------------------------ Felder */
+
+.feld {
+  margin: 0 0 14px;
+}
+
+.feld:last-child {
+  margin-bottom: 0;
+}
+
+.feld-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-leise);
+  margin: 0 0 5px;
+}
+
+.feld-zeile {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.feld-zeile .feld-eingabe {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.feld-einheit {
+  display: flex;
+  align-items: center;
+  font-size: 17px;
+  color: var(--text-leise);
+}
+
+/* 17px: alles unter 16px löst auf iOS Safari beim Fokus einen Zoom-Sprung aus. */
+.feld-eingabe,
+.auswahl {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.3;
+  color: var(--text);
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 11px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.feld-eingabe {
+  font-variant-numeric: tabular-nums;
+}
+
+.auswahl {
+  background-image: none;
+  padding-right: 12px;
+}
+
+.feld-eingabe:focus,
+.auswahl:focus {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
+  border-color: var(--akzent);
+}
+
+.feld-eingabe.ungueltig {
+  border-color: var(--minus);
+  background: var(--minus-flaeche);
+}
+
+.feld-hinweis {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.feld-fehler {
+  margin: 5px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--minus);
+}
+
+.feld-reihe {
+  display: flex;
+  gap: 10px;
+}
+
+.feld-reihe > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ Knöpfe */
+
+.knopf-haupt,
+.knopf-zweit,
+.knopf-gefahr,
+.knopf-flach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  min-width: 52px;
+  padding: 12px 18px;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 620;
+  line-height: 1.2;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+}
+
+.knopf-haupt {
+  width: 100%;
+  background: var(--akzent);
+  color: var(--akzent-text);
+}
+
+.knopf-zweit {
+  background: var(--flaeche);
+  color: var(--text);
+  border-color: var(--rand);
+}
+
+.knopf-gefahr {
+  background: var(--flaeche);
+  color: var(--minus);
+  border-color: var(--minus-rand);
+}
+
+.knopf-flach {
+  background: transparent;
+  color: var(--akzent);
+  padding: 12px 4px;
+}
+
+.knopf-breit {
+  width: 100%;
+}
+
+.knopf-symbol {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  border: 1px solid var(--rand);
+  border-radius: 11px;
+  background: var(--flaeche);
+  color: var(--minus);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active {
+  opacity: 0.7;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .knopf-haupt:hover {
+    filter: brightness(1.08);
+  }
+
+  .knopf-zweit:hover,
+  .knopf-gefahr:hover,
+  .knopf-symbol:hover {
+    background: var(--flaeche-2);
+  }
+}
+
+.knopf-reihe {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.knopf-reihe > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Hauptaktion im Daumenbereich: klebt über der Navigationsleiste. */
+.aktionsleiste {
+  position: -webkit-sticky;
+  position: sticky;
+  /* Klebt ÜBER der fixierten Navigationsleiste, nicht dahinter. */
+  bottom: calc(var(--nav-hoehe) + var(--safe-unten, 0px) + 10px);
+  z-index: 5;
+  padding: 10px 0 4px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--papier) 26%);
+}
+
+/* ------------------------------------------------------------------ Listen */
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.listen-eintrag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+.listen-eintrag:last-child {
+  border-bottom: 0;
+}
+
+/* Tippbare Zeile: volle Breite, 44px hoch, linksbündig. */
+.listen-knopf {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  display: block;
+  text-align: left;
+  padding: 8px 4px 8px 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 17px;
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.listen-name {
+  display: block;
+  font-weight: 600;
+}
+
+.listen-unter {
+  display: block;
+  font-size: 15px;
+  color: var(--text-leise);
+  font-variant-numeric: tabular-nums;
+}
+
+.posten {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+.posten:last-child {
+  border-bottom: 0;
+}
+
+.posten-fuss {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.posten-fuss .feld {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+/* ------------------------------------------------------ Aufklappen (optional) */
+
+.aufklapp {
+  margin-top: 14px;
+  border-top: 1px solid var(--rand);
+  padding-top: 4px;
+}
+
+.aufklapp-titel {
+  display: block;
+  min-height: 48px;
+  padding: 14px 0;
+  font-size: 16px;
+  font-weight: 620;
+  color: var(--akzent);
+  cursor: pointer;
+  list-style-position: inside;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aufklapp[open] .aufklapp-titel {
+  margin-bottom: 6px;
+}
+
+/* ------------------------------------------------------------------ Banner */
+
+.banner {
+  display: block;
+  padding: 13px 15px;
+  margin: 0 0 12px;
+  border-radius: var(--rand-radius);
+  border: 1px solid var(--minus-rand);
+  background: var(--minus-flaeche);
+  color: var(--minus);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.banner-titel {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.banner-hinweis {
+  border-color: var(--rand);
+  background: var(--akzent-schwach);
+  color: var(--text);
+}
+
+.banner .knopf-flach {
+  color: inherit;
+  text-decoration: underline;
+  padding-left: 0;
+  min-height: 44px;
+}
+
+.meldung {
+  margin: 10px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.meldung-gut {
+  color: var(--akzent);
+}
+
+.meldung-fehler {
+  color: var(--minus);
+}
+
+/* ------------------------------------------------------------------ Leiste */
+
+.leiste {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  background: var(--flaeche);
+  border-top: 1px solid var(--rand);
+  padding-bottom: var(--safe-unten, 0px);
+  padding-left: var(--safe-links, 0px);
+  padding-right: var(--safe-rechts, 0px);
+}
+
+.leiste-knopf {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--nav-hoehe);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  background: transparent;
+  border: 0;
+  border-top: 2px solid transparent;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-leise);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Labels sind absichtlich kurz: fünf davon müssen bei 320px nebeneinander passen. */
+.leiste-schrift {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leiste-punkt {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.leiste-knopf.aktiv {
+  color: var(--akzent);
+  border-top-color: var(--akzent);
+}
+
+.leiste-knopf.aktiv .leiste-punkt {
+  opacity: 1;
+}
+
+/* Die Hauptaktion ist auch inaktiv sofort erkennbar. */
+.leiste-knopf.haupt {
+  color: var(--akzent);
+}
+
+.leiste-knopf.haupt .leiste-punkt {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ Diverses */
+
+.versteckt {
+  display: none;
+}
+
+.datei-knopf {
+  position: relative;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.datei-knopf:focus-within {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+
+/* Fokussierbar für die Tastatur, unsichtbar fürs Auge — der Knopf ist das Label. */
+.datei-versteckt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.fuss {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .knopf-haupt,
+  .knopf-zweit,
+  .knopf-gefahr,
+  .knopf-symbol,
+  .leiste-knopf {
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.12s ease;
+  }
+}

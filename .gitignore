@@ -1,0 +1,21 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log
+npm-debug.log*
+coverage/
+.vite/
+
+# Persönliche Startwerte — dürfen NIEMALS ins öffentliche Repository.
+# Diese Datei wird über "Daten → Wiederherstellen" in die App importiert.
+meine-startwerte.json
+*.privat.json
+
+# Interne Uebergabe-Notizen mit echten Betraegen - bleiben lokal.
+HANDOFF.md
