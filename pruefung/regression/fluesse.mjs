@@ -93,9 +93,9 @@ console.log('\n[1] Ersteinrichtung');
     // es kann also nichts verloren gehen, was noch gar nicht existiert.
     ok('erster Start schreibt noch nichts (Startwerte kommen aus dem Code)');
   } else {
-    if (d.fixkosten?.length !== 17) {
-      melde('BLOCKER', 'Falsche Anzahl Fixkosten', `erwartet 17, tatsächlich ${d.fixkosten?.length}`);
-    } else ok('17 Fixkostenkategorien angelegt');
+    if (d.fixkosten?.length !== 15) {
+      melde('BLOCKER', 'Falsche Anzahl Fixkosten', `erwartet 15, tatsächlich ${d.fixkosten?.length}`);
+    } else ok('15 Fixkostenkategorien angelegt');
   }
 
   // Die Startdaten sind bewusst leer (Datenschutz). Deshalb prüft dieser Fluss
@@ -117,12 +117,11 @@ console.log('\n[1] Ersteinrichtung');
 
     await gehZu('Verteil');
     // Handrechnung: 2000,00 − (1000,00 + 200,00) = 800,00 Verfügbar
-    //               800,00 − 300,00 − 50,00 = 450,00 Tagesgeld
-    //               100,00 + 50,00 = 150,00 ETF gesamt
+    //               800,00 − 300,00 Freizeit − 0,00 Invest = 500,00 Tagesgeld
     for (const [was, wert] of [
       ['Verfügbar', '800,00'],
-      ['Tagesgeld', '450,00'],
-      ['ETF gesamt', '150,00'],
+      ['Tagesgeld', '500,00'],
+      ['Invest', '0,00'],
     ]) {
       if (await zeigt(wert)) ok(`${was} zeigt ${wert} €`);
       else melde('BLOCKER', `${was} nicht als ${wert} € angezeigt`, (await seitentext()).slice(0, 300));
@@ -260,7 +259,7 @@ console.log('\n[6] Alles zurücksetzen');
   await page.waitForTimeout(600);
   const d = await daten();
   if (d?.monate?.length !== 0) melde('BLOCKER', 'Monate nach Zurücksetzen noch da', `${d?.monate?.length}`);
-  else if (d?.fixkosten?.length !== 17) melde('BLOCKER', 'Fixkosten nicht auf Startwerte zurück', `${d?.fixkosten?.length}`);
+  else if (d?.fixkosten?.length !== 15) melde('BLOCKER', 'Fixkosten nicht auf Startwerte zurück', `${d?.fixkosten?.length}`);
   else ok('Startzustand wiederhergestellt, überlebt Reload');
 }
 

@@ -20,6 +20,7 @@ import type {
   Einnahmeposten,
   Einstellungen,
   Fixkostenposten,
+  Investposten,
   Monatseintrag,
 } from '../domain/types';
 import { neueId } from '../domain/types';
@@ -164,6 +165,34 @@ export class Store {
     return this.aktualisieren((d) => ({
       ...d,
       einnahmen: this.einnahmenVon(d).filter((p) => p.id !== id),
+    }));
+  }
+
+  // ------------------------------------------------------------------ Invest
+
+  /** `invest` fehlt in Sicherungen vor Schema 4 — defensiv als leere Liste lesen. */
+  private investVon(d: Readonly<AppDaten>): Investposten[] {
+    return Array.isArray(d.invest) ? d.invest : [];
+  }
+
+  investHinzufuegen(name: string, betragCent: number): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      invest: [...this.investVon(d), { id: neueId(), name, betragCent }],
+    }));
+  }
+
+  investAendern(id: string, teil: Partial<Omit<Investposten, 'id'>>): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      invest: this.investVon(d).map((p) => (p.id === id ? { ...p, ...teil } : p)),
+    }));
+  }
+
+  investEntfernen(id: string): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      invest: this.investVon(d).filter((p) => p.id !== id),
     }));
   }
 

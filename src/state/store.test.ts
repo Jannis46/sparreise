@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { startDaten, type AppDaten } from '../domain/types';
+import { FIXKOSTEN_START_ANZAHL, startDaten, type AppDaten } from '../domain/types';
 import { SpeicherFehler, type StorageAdapter, type StorageTier } from '../storage/adapter';
 import { Store } from './store';
 
@@ -96,14 +96,14 @@ describe('Store', () => {
     ab();
     await store.fixkostenHinzufuegen('Test 2', 100);
     expect(treffer).toBe(stand);
-    expect(store.getDaten().fixkosten).toHaveLength(19);
+    expect(store.getDaten().fixkosten).toHaveLength(FIXKOSTEN_START_ANZAHL + 2);
   });
 
   it('fixkostenVerschieben behält alle Posten', async () => {
     const store = new Store(new TestAdapter(), startDaten());
-    const id = store.getDaten().fixkosten[16]?.id as string;
+    const id = store.getDaten().fixkosten[FIXKOSTEN_START_ANZAHL - 1]?.id as string;
     await store.fixkostenVerschieben(id, 0);
-    expect(store.getDaten().fixkosten).toHaveLength(17);
+    expect(store.getDaten().fixkosten).toHaveLength(FIXKOSTEN_START_ANZAHL);
     expect(store.getDaten().fixkosten[0]?.name).toBe('Friseur');
   });
 });

@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { FIXKOSTEN_START_ANZAHL, neueId, startDaten } from './types';
 
 describe('startDaten', () => {
-  it('hat 17 Fixkostenposten in fachlich fester Reihenfolge', () => {
+  it('hat 15 Fixkostenposten in fachlich fester Reihenfolge', () => {
     const d = startDaten();
     expect(d.fixkosten).toHaveLength(FIXKOSTEN_START_ANZAHL);
     expect(d.fixkosten[0]?.name).toBe('Miete');
-    expect(d.fixkosten[16]?.name).toBe('Friseur');
+    expect(d.fixkosten[14]?.name).toBe('Friseur');
   });
 
   it('enthält keine Beträge — die trägt der Nutzer selbst ein', () => {

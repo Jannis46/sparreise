@@ -43,25 +43,14 @@ export function bauVerteilung(kontext: UiKontext): Screen {
     },
     beiEingabe: zeichnen,
   });
-  const etfZusatzFeld = betragFeld({
-    label: 'ETF zusätzlich',
-    wertCent: einstellungen.etfZusatzCent,
-    beiGueltig: (cent) => {
-      void store.einstellungenSetzen({ etfZusatzCent: cent });
-    },
-    beiEingabe: zeichnen,
-  });
-  const etfInFixFeld = betragFeld({
-    label: 'ETF-Anteil, der schon in den Fixkosten steckt',
-    wertCent: einstellungen.etfInFixkostenCent,
-    hinweis: 'Wird nicht doppelt abgezogen — zählt nur zur Gesamt-ETF-Sparrate dazu.',
-    beiGueltig: (cent) => {
-      void store.einstellungenSetzen({ etfInFixkostenCent: cent });
-    },
-    beiEingabe: zeichnen,
-  });
-
-  stellKarte.append(freizeitFeld.el, etfZusatzFeld.el, etfInFixFeld.el);
+  stellKarte.append(freizeitFeld.el);
+  stellKarte.appendChild(
+    el(
+      'p',
+      'hinweis',
+      'Die monatliche Anlage bearbeitest du unter „Fixkosten" im Bereich Invest.',
+    ),
+  );
   wurzel.appendChild(stellKarte);
 
   function feldOderGespeichert(feld: BetragFeld, gespeichert: number): number {
@@ -78,8 +67,6 @@ export function bauVerteilung(kontext: UiKontext): Screen {
       einstellungen: {
         ...gespeichert,
         freizeitCent: feldOderGespeichert(freizeitFeld, gespeichert.freizeitCent),
-        etfZusatzCent: feldOderGespeichert(etfZusatzFeld, gespeichert.etfZusatzCent),
-        etfInFixkostenCent: feldOderGespeichert(etfInFixFeld, gespeichert.etfInFixkostenCent),
       },
     });
   }
@@ -97,7 +84,7 @@ export function bauVerteilung(kontext: UiKontext): Screen {
         el(
           'span',
           'banner-text',
-          `Freizeit und ETF-Zusatz übersteigen das Verfügbare um ${formatCent(
+          `Freizeit und Invest übersteigen das Verfügbare um ${formatCent(
             Math.abs(verteilung.uebrigCent),
           )}. Fürs Tagesgeld bleibt nichts übrig.`,
         ),
@@ -116,8 +103,8 @@ export function bauVerteilung(kontext: UiKontext): Screen {
         `wertzeile-stark${verfuegbarCent < 0 ? ' wertzeile-minus' : ''}`,
       ),
     );
-    ergebnisBereich.appendChild(wertZeile('Freizeit-Budget', formatCent(verteilung.freizeitCent)));
-    ergebnisBereich.appendChild(wertZeile('ETF zusätzlich', formatCent(verteilung.etfZusatzCent)));
+    ergebnisBereich.appendChild(wertZeile('− Freizeit-Budget', formatCent(verteilung.freizeitCent)));
+    ergebnisBereich.appendChild(wertZeile('− Invest', formatCent(verteilung.investCent)));
     ergebnisBereich.appendChild(
       wertZeile(
         'Tagesgeld (Rest)',
@@ -126,7 +113,11 @@ export function bauVerteilung(kontext: UiKontext): Screen {
       ),
     );
     ergebnisBereich.appendChild(
-      wertZeile('Gesamt-ETF-Sparrate', formatCent(verteilung.etfGesamtCent), 'wertzeile-stark'),
+      wertZeile(
+        'Davon gespart (Invest + Tagesgeld)',
+        formatCent(verteilung.investCent + verteilung.uebrigCent),
+        'wertzeile-stark',
+      ),
     );
 
     diagrammEinsetzen(diagrammBereich, (breite) =>
@@ -138,7 +129,7 @@ export function bauVerteilung(kontext: UiKontext): Screen {
             { label: 'Fixkosten', wertCent: verteilung.fixkostenCent },
             { label: 'Studium', wertCent: verteilung.studiumCent },
             { label: 'Freizeit', wertCent: verteilung.freizeitCent },
-            { label: 'ETF zusätzlich', wertCent: verteilung.etfZusatzCent },
+            { label: 'Invest', wertCent: verteilung.investCent },
             { label: 'Tagesgeld', wertCent: verteilung.uebrigCent },
           ],
         },

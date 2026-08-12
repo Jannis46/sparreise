@@ -53,6 +53,29 @@ MIGRATIONEN.set(1, (d) => ({ ...d, schemaVersion: 2 }));
 // haben keine — die leere Liste ergänzt die Prüfung weiter unten von selbst.
 MIGRATIONEN.set(2, (d) => ({ ...d, schemaVersion: 3 }));
 
+/**
+ * v3 → v4: Anlage wird eine eigene Liste statt zweier Konstanten in den Einstellungen.
+ *
+ * Alt: `etfZusatzCent` ging vom Verfügbaren ab, `etfInFixkostenCent` war ein
+ * Korrekturwert für den Teil der Sparrate, der als Fixkostenposten geführt wurde.
+ * Neu: `invest` ist eine echte Liste, ihre Summe geht vom Verfügbaren ab.
+ *
+ * Damit die Verteilung nach der Migration **exakt dieselben Zahlen** liefert,
+ * wird nur `etfZusatzCent` übernommen — genau der Betrag, der vorher abgezogen
+ * wurde. `etfInFixkostenCent` war reine Anzeige und entfällt ersatzlos; die
+ * betreffenden Posten stehen weiterhin in den Fixkosten und werden dort auch
+ * weiterhin gezählt. Wer sie umsortieren will, verschiebt sie von Hand.
+ */
+MIGRATIONEN.set(3, (d) => {
+  const alt = istObjekt(d['einstellungen']) ? d['einstellungen'] : {};
+  const zusatz = ganzzahl(alt['etfZusatzCent'], -MAX_CENT, MAX_CENT) ?? 0;
+  const invest = zusatz !== 0 ? [{ id: neueId(), name: 'ETF zusätzlich', betragCent: zusatz }] : [];
+  const neu = { ...alt };
+  delete neu['etfZusatzCent'];
+  delete neu['etfInFixkostenCent'];
+  return { ...d, schemaVersion: 4, einstellungen: neu, invest };
+});
+
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert);
 }
@@ -187,8 +210,6 @@ function einstellungenPruefen(roh: unknown): Einstellungen {
     einkommenCent: feld('einkommenCent'),
     studiumCent: feld('studiumCent'),
     freizeitCent: feld('freizeitCent'),
-    etfZusatzCent: feld('etfZusatzCent'),
-    etfInFixkostenCent: feld('etfInFixkostenCent'),
   };
 }
 
@@ -229,21 +250,26 @@ function migriereIntern(roh: unknown): AppDaten | null {
   if (!Array.isArray(rohFixkosten) || !Array.isArray(rohMonate)) return null;
   if (rohFixkosten.length > MAX_FIXKOSTEN || rohMonate.length > MAX_MONATE) return null;
 
-  // `einnahmen` gibt es erst ab Schema 3. Fehlt der Schlüssel, ist die Liste leer —
-  // das ist kein Fehler, sondern der Normalfall bei älteren Sicherungen.
+  // `einnahmen` gibt es erst ab Schema 3, `invest` erst ab Schema 4. Fehlt der
+  // Schlüssel, ist die Liste leer — kein Fehler, sondern der Normalfall bei
+  // älteren Sicherungen.
   const rohEinnahmen = daten['einnahmen'] === undefined ? [] : daten['einnahmen'];
+  const rohInvest = daten['invest'] === undefined ? [] : daten['invest'];
   if (!Array.isArray(rohEinnahmen) || rohEinnahmen.length > MAX_FIXKOSTEN) return null;
+  if (!Array.isArray(rohInvest) || rohInvest.length > MAX_FIXKOSTEN) return null;
 
   const vergebeneIds = new Set<string>();
   const fixkosten = listePruefen(rohFixkosten, (e) => fixkostenPruefen(e, vergebeneIds));
   const einnahmen = listePruefen(rohEinnahmen, (e) => einnahmePruefen(e, vergebeneIds));
+  const invest = listePruefen(rohInvest, (e) => einnahmePruefen(e, vergebeneIds));
   const monate = listePruefen(rohMonate, (e) => monatPruefen(e, vergebeneIds));
-  if (fixkosten === null || einnahmen === null || monate === null) return null;
+  if (fixkosten === null || einnahmen === null || invest === null || monate === null) return null;
 
   return {
     schemaVersion: SCHEMA_VERSION,
     fixkosten,
     einnahmen,
+    invest,
     einstellungen: einstellungenPruefen(daten['einstellungen']),
     monate,
   };

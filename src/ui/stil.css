@@ -906,3 +906,128 @@ button:focus-visible {
   font-size: 15px;
   line-height: 1.4;
 }
+
+/* --------------------------------------------------- Invest & Etappenpfad */
+
+.invest-summe {
+  margin: 10px 0 4px;
+}
+
+/* Alle Etappen als Pfad. Reine Liste, keine Interaktion — der Fortschritt
+   soll ablesbar sein, ohne dass man irgendwo tippen muss. */
+.etappen-pfad {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.pfad-stufe {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  color: var(--text-leise);
+}
+
+.pfad-marke {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--rand);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.pfad-erreicht {
+  color: var(--text);
+}
+
+.pfad-erreicht .pfad-marke {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-text);
+  font-weight: 700;
+}
+
+.pfad-text {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pfad-name {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.pfad-ziel {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.pfad-erreicht .pfad-ziel {
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------- Hochrechnung */
+
+/* Der Regler braucht eine großzügige Trefferfläche — 44px Höhe insgesamt,
+   auch wenn die sichtbare Schiene dünner ist. */
+.regler {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0 0 4px;
+  background: transparent;
+}
+
+.regler::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--diagramm-spur);
+}
+
+.regler::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--akzent);
+  border: 2px solid var(--flaeche);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.regler:focus {
+  outline: none;
+}
+
+.regler:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--akzent-schwach);
+}
+
+.hochrechnung-ausgabe {
+  margin: 4px 0 0;
+}
+
+.hochrechnung-satz {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--akzent-schwach);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+}

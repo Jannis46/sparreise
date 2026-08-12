@@ -110,6 +110,31 @@ export function bauFixkosten(kontext: UiKontext): Screen {
   let einnahmeZeilen: PostenZeile[] = [];
   let gezeichneteEinnahmeIds = '';
 
+  // ------------------------------------------------------------- Invest
+  const investKarte = karte('Invest');
+  investKarte.appendChild(
+    el(
+      'p',
+      'hinweis',
+      'Was monatlich angelegt wird. Steht bewusst nicht bei den Fixkosten — das ist keine Ausgabe, sondern verschobenes Vermögen.',
+    ),
+  );
+  const investBereich = el('div', 'posten-liste');
+  investKarte.appendChild(investBereich);
+  const investSumme = el('div', 'invest-summe');
+  investKarte.appendChild(investSumme);
+  investKarte.appendChild(
+    knopf('Anlage hinzufügen', 'knopf-zweit knopf-breit', () => {
+      void store.investHinzufuegen('', 0).catch((fehler: unknown) => {
+        meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+      });
+    }),
+  );
+  wurzel.appendChild(investKarte);
+
+  let investZeilen: PostenZeile[] = [];
+  let gezeichneteInvestIds = '';
+
   // ------------------------------------------------------------- Rechnen
 
   /** Aktueller Feldwert, sonst der zuletzt gespeicherte — nie stillschweigend 0. */
@@ -147,6 +172,17 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     const weitere = summeEinnahmen();
     const einkommen = gehalt + weitere;
     const bleibt = einkommen - fixkosten - studium;
+    const invest = summeInvest();
+
+    leeren(investSumme);
+    investSumme.appendChild(
+      wertZeile(`Anlage pro Monat (${investZeilen.length})`, formatCent(invest), 'wertzeile-stark'),
+    );
+    if (einkommen > 0) {
+      investSumme.appendChild(
+        wertZeile('Anteil am Einkommen', `${Math.round((invest / einkommen) * 100)} %`),
+      );
+    }
 
     leeren(summenBereich);
     summenBereich.appendChild(wertZeile('Netto-Einkommen', formatCent(gehalt)));
@@ -299,6 +335,69 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     return aufklapp;
   }
 
+  // ------------------------------------------------------------- Invest-Liste
+
+  function summeInvest(): number {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.invest) ? daten.invest : [];
+    let summe = 0;
+    for (const zeile of investZeilen) {
+      const posten = liste.find((p) => p.id === zeile.id);
+      summe += feldOderGespeichert(zeile.betrag, posten ? posten.betragCent : 0);
+    }
+    return summe;
+  }
+
+  function investZeichnen(): void {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.invest) ? daten.invest : [];
+    leeren(investBereich);
+    investZeilen = [];
+
+    if (liste.length === 0) {
+      investBereich.appendChild(
+        el('p', 'leer-hinweis', 'Keine Anlage eingetragen. Alles Übrige geht aufs Tagesgeld.'),
+      );
+    }
+
+    for (const posten of liste) {
+      const block = el('div', 'posten');
+
+      const name = textFeld({
+        label: 'Bezeichnung',
+        wert: posten.name,
+        platzhalter: 'z. B. ETF-Sparplan',
+        beiAenderung: (wert) => {
+          void store.investAendern(posten.id, { name: wert });
+        },
+      });
+
+      const betrag = betragFeld({
+        label: 'Betrag pro Monat',
+        wertCent: posten.betragCent,
+        beiGueltig: (cent) => {
+          void store.investAendern(posten.id, { betragCent: cent });
+        },
+        beiEingabe: summeZeichnen,
+      });
+
+      const fuss = el('div', 'posten-fuss');
+      fuss.appendChild(betrag.el);
+      fuss.appendChild(
+        symbolKnopf('×', `${posten.name || 'Anlage'} löschen`, () => {
+          if (!bestaetigen(`"${posten.name || 'Anlage ohne Namen'}" wirklich löschen?`)) return;
+          void store.investEntfernen(posten.id).catch((fehler: unknown) => {
+            meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+          });
+        }),
+      );
+
+      block.append(name.el, fuss);
+      investBereich.appendChild(block);
+      investZeilen.push({ id: posten.id, name, betrag });
+    }
+  }
+
   // ------------------------------------------------------------- Einnahmen-Liste
 
   function einnahmenZeichnen(): void {
@@ -420,6 +519,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
   listeZeichnen();
   einnahmenZeichnen();
+  investZeichnen();
   summeZeichnen();
 
   return {
@@ -435,6 +535,13 @@ export function bauFixkosten(kontext: UiKontext): Screen {
       if (einnahmeIds !== gezeichneteEinnahmeIds) {
         einnahmenZeichnen();
         gezeichneteEinnahmeIds = einnahmeIds;
+      }
+      const investIds = (Array.isArray(daten.invest) ? daten.invest : [])
+        .map((p) => p.id)
+        .join('|');
+      if (investIds !== gezeichneteInvestIds) {
+        investZeichnen();
+        gezeichneteInvestIds = investIds;
       }
       summeZeichnen();
     },

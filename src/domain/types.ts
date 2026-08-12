@@ -5,7 +5,7 @@
  * Feldnamen tragen konsequent das Suffix `Cent`.
  */
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Kreditangaben zu einem Fixkostenposten. Optional — die meisten Posten sind
@@ -57,12 +57,23 @@ export interface Monatseintrag {
   erfasstAm: number; // Date.now()
 }
 
+/**
+ * Investitionsposten — was monatlich in Anlage fließt statt in Verbrauch.
+ *
+ * Bewusst getrennt von den Fixkosten: Ein ETF-Sparplan ist keine Ausgabe im
+ * Sinne von „weg", sondern verschobenes Vermögen. In einer Liste mit Miete und
+ * Strom zu stehen verzerrt den Blick auf die eigene Kostenstruktur.
+ */
+export interface Investposten {
+  id: string;
+  name: string;
+  betragCent: number;
+}
+
 export interface Einstellungen {
   einkommenCent: number; // Netto
   studiumCent: number; // Studiengebühren
   freizeitCent: number; // fixes Freizeit-Budget, Default 30000
-  etfZusatzCent: number; // ETF zusätzlich, Default 5000
-  etfInFixkostenCent: number; // Default 10000 — Teil der ETF-Sparrate, der bereits in den Fixkosten steckt
 }
 
 export interface AppDaten {
@@ -70,6 +81,8 @@ export interface AppDaten {
   fixkosten: Fixkostenposten[];
   /** Feste Einnahmen zusätzlich zum Netto-Gehalt. Leer, solange es keine gibt. */
   einnahmen: Einnahmeposten[];
+  /** Monatliche Anlage. Geht vom Verfügbaren ab wie das Freizeit-Budget. */
+  invest: Investposten[];
   einstellungen: Einstellungen;
   monate: Monatseintrag[];
 }
@@ -102,25 +115,33 @@ const FIXKOSTEN_START: ReadonlyArray<readonly [name: string, betragCent: number]
   ['Handyversicherung', 0],
   ['iCloud', 0],
   ['Bankgebühren', 0],
-  ['ETF-Sparplan Ftse All-World', 0],
-  ['SV Sparkassenversicherung', 0],
   ['Friseur', 0],
 ];
 
+/**
+ * Startwerte der Anlage. Was hier steht, ist keine Ausgabe, sondern verschobenes
+ * Vermögen — deshalb eigene Liste statt einer Zeile in den Fixkosten.
+ */
+const INVEST_START: ReadonlyArray<readonly [name: string, betragCent: number]> = [
+  ['ETF-Sparplan Ftse All-World', 0],
+  ['SV Sparkassenversicherung', 0],
+  ['ETF zusätzlich', 0],
+];
+
 /** Anzahl der vorgegebenen Fixkostenkategorien. Testanker. */
-export const FIXKOSTEN_START_ANZAHL = 17;
+export const FIXKOSTEN_START_ANZAHL = 15;
+/** Anzahl der vorgegebenen Investpositionen. Testanker. */
+export const INVEST_START_ANZAHL = 3;
 
 /**
  * Startwerte der Einstellungen. Einkommen und Studiengebühren sind 0 — siehe
- * Datenschutzhinweis oben. Freizeit-Budget, ETF-Zusatz und der in den Fixkosten
- * enthaltene ETF-Anteil sind allgemeine Vorgabewerte der App, keine Personendaten.
+ * Datenschutzhinweis oben. Das Freizeit-Budget ist ein allgemeiner Vorgabewert
+ * der App, keine Personendatum.
  */
 export const EINSTELLUNGEN_START: Readonly<Einstellungen> = {
   einkommenCent: 0,
   studiumCent: 0,
   freizeitCent: 30000,
-  etfZusatzCent: 5000,
-  etfInFixkostenCent: 10000,
 };
 
 /** Frischer Datensatz für den ersten App-Start (oder nach "Alles löschen"). */
@@ -133,6 +154,7 @@ export function startDaten(): AppDaten {
       betragCent,
     })),
     einnahmen: [],
+    invest: INVEST_START.map(([name, betragCent]) => ({ id: neueId(), name, betragCent })),
     einstellungen: { ...EINSTELLUNGEN_START },
     monate: [],
   };

@@ -16,6 +16,8 @@ import {
   vermoegenCent,
 } from '../../domain/etappen';
 import type { Etappe } from '../../domain/etappen';
+import { hochrechnung } from '../../domain/hochrechnung';
+import { berechneVerteilung } from '../../domain/verteilung';
 import type { Monatseintrag } from '../../domain/types';
 import { linienChart, ringFortschritt } from '../../chart/chart';
 import type { ChartPunkt } from '../../chart/chart';
@@ -42,8 +44,92 @@ function aktuelleEtappe(alle: readonly Etappe[]): Etappe | null {
   return alle.length > 0 ? (alle[alle.length - 1] as Etappe) : null;
 }
 
+/** Monatsnamen für die Ausgabe des Zieldatums. */
+const MONATSNAMEN = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+];
+
 export function bauUebersicht(kontext: UiKontext): Screen {
   const wurzel = el('div', 'screen-uebersicht');
+
+  /**
+   * „Wann bin ich da?" — mit Schieberegler zum Durchspielen.
+   *
+   * Gerechnet wird linear ohne Rendite. Ein ETF wächst auch durch Kurse, aber
+   * jede Renditeannahme wäre geraten und würde ein Datum vorgaukeln, das
+   * niemand halten kann. Lieber eine Zahl, die stimmt, wenn nichts dazukommt.
+   *
+   * Der Regler ist bewusst kein Hover-Element: er funktioniert per Tap und Zug,
+   * die Zahl darunter aktualisiert sich sofort.
+   */
+  function hochrechnungKarte(standCent: number, zielCent: number): HTMLElement {
+    const karteEl = karte('Wann bin ich da?');
+    const jetzt = new Date();
+
+    const geplant = berechneVerteilung(kontext.store.getDaten());
+    // Vorschlag: was laut Verteilung monatlich zurückgelegt wird.
+    const vorschlag = Math.max(0, geplant.investCent + geplant.uebrigCent);
+    // Regler-Obergrenze großzügig, aber nicht absurd: mindestens 500 €.
+    const maximum = Math.max(50000, Math.ceil((vorschlag * 2) / 5000) * 5000);
+
+    const ausgabe = el('div', 'hochrechnung-ausgabe');
+
+    const regler = el('input', 'regler');
+    regler.type = 'range';
+    regler.min = '0';
+    regler.max = String(maximum);
+    regler.step = '500'; // 5,00 € Schritte
+    regler.value = String(Math.min(vorschlag, maximum));
+    regler.setAttribute('aria-label', 'Monatliche Sparrate für die Hochrechnung');
+
+    function neuZeichnen(): void {
+      const rate = Number(regler.value);
+      leeren(ausgabe);
+
+      ausgabe.appendChild(
+        wertZeile('Sparrate pro Monat', formatCent(rate), 'wertzeile-stark'),
+      );
+
+      const h = hochrechnung(standCent, zielCent, rate, jetzt.getFullYear(), jetzt.getMonth() + 1);
+      ausgabe.appendChild(wertZeile(`Noch bis ${formatCent(zielCent)}`, formatCent(h.restCent)));
+
+      if (h.erreicht) {
+        ausgabe.appendChild(el('p', 'hochrechnung-satz', 'Ziel bereits erreicht.'));
+      } else if (h.monate === null || h.zielJahr === null || h.zielMonat === null) {
+        ausgabe.appendChild(
+          el('p', 'hochrechnung-satz', 'Bei dieser Rate dauert es unabsehbar lange.'),
+        );
+      } else {
+        const jahre = Math.floor(h.monate / 12);
+        const rest = h.monate % 12;
+        const dauer =
+          jahre > 0
+            ? `${jahre} ${jahre === 1 ? 'Jahr' : 'Jahre'}${rest > 0 ? ` und ${rest} ${rest === 1 ? 'Monat' : 'Monate'}` : ''}`
+            : `${h.monate} ${h.monate === 1 ? 'Monat' : 'Monate'}`;
+        ausgabe.appendChild(
+          el(
+            'p',
+            'hochrechnung-satz',
+            `In ${dauer} — also im ${MONATSNAMEN[h.zielMonat - 1]} ${h.zielJahr}.`,
+          ),
+        );
+      }
+    }
+
+    regler.addEventListener('input', neuZeichnen);
+    karteEl.appendChild(regler);
+    karteEl.appendChild(ausgabe);
+    karteEl.appendChild(
+      el(
+        'p',
+        'hinweis',
+        'Linear gerechnet, ohne Kursgewinne — was am Ende wirklich dasteht, kann mehr sein.',
+      ),
+    );
+    neuZeichnen();
+    return karteEl;
+  }
 
   function zeichnen(): void {
     leeren(wurzel);
@@ -138,7 +224,26 @@ export function bauUebersicht(kontext: UiKontext): Screen {
           ),
         );
       }
+
+      // Alle Etappen als Pfad. Zeigt auf einen Blick, was geschafft ist und was
+      // noch kommt — die einzelne „nächste Etappe" allein verrät das nicht.
+      const pfad = el('ol', 'etappen-pfad');
+      for (const stufe of alleEtappen) {
+        const punkt = el('li', `pfad-stufe${stufe.erreicht ? ' pfad-erreicht' : ''}`);
+        punkt.appendChild(el('span', 'pfad-marke', stufe.erreicht ? '✓' : '○'));
+        const beschriftung = el('span', 'pfad-text');
+        beschriftung.appendChild(el('span', 'pfad-name', stufe.name));
+        beschriftung.appendChild(el('span', 'pfad-ziel', formatCent(stufe.zielCent)));
+        punkt.appendChild(beschriftung);
+        pfad.appendChild(punkt);
+      }
+      etappenKarte.appendChild(pfad);
       wurzel.appendChild(etappenKarte);
+
+      // ------------------------------------------------- Hochrechnung
+      if (!alleGeschafft) {
+        wurzel.appendChild(hochrechnungKarte(bestmarke, etappe.zielCent));
+      }
     }
 
     // ---------------------------------------------------------- Verlauf

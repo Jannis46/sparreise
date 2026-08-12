@@ -207,7 +207,39 @@ describe('migriere — Feldprüfung im Detail', () => {
     expect(daten?.einstellungen.einkommenCent).toBe(300000);
     expect(daten?.einstellungen.studiumCent).toBe(EINSTELLUNGEN_START.studiumCent);
     expect(daten?.einstellungen.freizeitCent).toBe(EINSTELLUNGEN_START.freizeitCent);
-    expect(daten?.einstellungen.etfInFixkostenCent).toBe(EINSTELLUNGEN_START.etfInFixkostenCent);
+  });
+
+  it('migriert Schema 3 auf 4: etfZusatz wird zu einer Anlageposition', () => {
+    const daten = migriere({
+      schemaVersion: 3,
+      fixkosten: [{ id: 'f1', name: 'Miete', betragCent: 70000 }],
+      monate: [],
+      einstellungen: {
+        einkommenCent: 200000,
+        studiumCent: 20000,
+        freizeitCent: 30000,
+        etfZusatzCent: 5000,
+        etfInFixkostenCent: 10000,
+      },
+    });
+    expect(daten?.schemaVersion).toBe(4);
+    // Genau der Betrag, der vorher vom Verfügbaren abging — die Verteilung
+    // rechnet nach der Migration identisch weiter.
+    expect(daten?.invest).toHaveLength(1);
+    expect(daten?.invest[0]?.betragCent).toBe(5000);
+    expect(daten?.invest[0]?.name).toBe('ETF zusätzlich');
+    // Der reine Anzeigewert entfällt ersatzlos.
+    expect('etfInFixkostenCent' in (daten?.einstellungen ?? {})).toBe(false);
+  });
+
+  it('Schema 3 ohne etfZusatz ergibt eine leere Anlageliste', () => {
+    const daten = migriere({
+      schemaVersion: 3,
+      fixkosten: [{ id: 'f1', name: 'Miete', betragCent: 70000 }],
+      monate: [],
+      einstellungen: { einkommenCent: 200000, studiumCent: 0, freizeitCent: 0, etfZusatzCent: 0 },
+    });
+    expect(daten?.invest).toEqual([]);
   });
 
   it('setzt ein unbrauchbares erfasstAm auf jetzt', () => {

@@ -9,7 +9,7 @@ import { ganzzahlig } from './geld';
 /**
  * Ergebnis der Monatsverteilung. Alle Werte Cent-Integer.
  * Invariante (per Test abgesichert):
- *   fixkostenCent + studiumCent + freizeitCent + etfZusatzCent + uebrigCent === einkommenCent
+ *   fixkostenCent + studiumCent + freizeitCent + investCent + uebrigCent === einkommenCent
  */
 export interface Verteilung {
   /** Netto-Gehalt plus alle festen Zusatzeinnahmen. Basis der gesamten Rechnung. */
@@ -28,10 +28,12 @@ export interface Verteilung {
    */
   verfuegbarCent: number;
   freizeitCent: number;
-  /** ETF-Sparrate zusätzlich zu dem Teil, der schon in den Fixkosten steckt. */
-  etfZusatzCent: number;
-  /** etfInFixkostenCent + etfZusatzCent — die tatsächliche ETF-Gesamtsparrate. */
-  etfGesamtCent: number;
+  /**
+   * Summe aller Investpositionen — die tatsächliche monatliche Anlage.
+   * Früher steckte ein Teil davon in den Fixkosten und wurde über eine
+   * Konstante wieder herausgerechnet; jetzt sind es echte Posten.
+   */
+  investCent: number;
   /** Rest, der aufs Tagesgeld geht. Kann negativ sein (Unterdeckung). */
   uebrigCent: number;
   /** true, wenn uebrigCent < 0. */
@@ -56,7 +58,13 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
   const einkommenCent = gehaltCent + weitereEinnahmenCent;
   const studiumCent = ganzzahlig(e.studiumCent);
   const freizeitCent = ganzzahlig(e.freizeitCent);
-  const etfZusatzCent = ganzzahlig(e.etfZusatzCent);
+
+  let investCent = 0;
+  if (Array.isArray(daten.invest)) {
+    for (const posten of daten.invest) {
+      if (posten) investCent += ganzzahlig(posten.betragCent);
+    }
+  }
 
   // Defensiv: bei Altdaten oder einer manipulierten Import-Datei kann `fixkosten`
   // fehlen oder kein Array sein. Die Verteilung darf davon nicht abstürzen.
@@ -67,9 +75,9 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
     }
   }
 
-  // Verfügbar = Einkommen − (Fixkosten + Studium); davon gehen Freizeit und ETF-Zusatz ab.
+  // Verfügbar = Einkommen − (Fixkosten + Studium); davon gehen Freizeit und Invest ab.
   const verfuegbarCent = einkommenCent - (fixkostenCent + studiumCent);
-  const uebrigCent = verfuegbarCent - freizeitCent - etfZusatzCent; // = Tagesgeld
+  const uebrigCent = verfuegbarCent - freizeitCent - investCent; // = Tagesgeld
 
   return {
     einkommenCent,
@@ -79,8 +87,7 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
     studiumCent,
     verfuegbarCent,
     freizeitCent,
-    etfZusatzCent,
-    etfGesamtCent: ganzzahlig(e.etfInFixkostenCent) + etfZusatzCent,
+    investCent,
     uebrigCent,
     unterdeckung: uebrigCent < 0,
   };
@@ -93,9 +100,9 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
  * an `Verteilung.unterdeckung`, nicht an einer negativen Quote.
  */
 export function sparquote(verteilung: Verteilung): number {
-  const { einkommenCent, etfGesamtCent, uebrigCent } = verteilung;
+  const { einkommenCent, investCent, uebrigCent } = verteilung;
   if (!Number.isFinite(einkommenCent) || einkommenCent <= 0) return 0;
-  const quote = (etfGesamtCent + uebrigCent) / einkommenCent;
+  const quote = (investCent + uebrigCent) / einkommenCent;
   if (!Number.isFinite(quote)) return 0;
   return Math.min(1, Math.max(0, quote));
 }

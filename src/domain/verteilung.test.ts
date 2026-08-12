@@ -10,22 +10,31 @@ import { startDaten, type AppDaten } from './types';
  * bewusst erfunden und beschreibt niemanden.
  *
  *   Einkommen           2.000,00
- *   − Fixkosten         1.000,00   (17 Posten)
+ *   − Fixkosten         1.000,00   (15 Posten)
  *   − Studium             200,00
  *   = Verfügbar           800,00
  *   − Freizeit            300,00
- *   − ETF zusätzlich       50,00
- *   = Tagesgeld           450,00
- *   ETF gesamt            150,00   (100,00 in Fixkosten + 50,00 zusätzlich)
+ *   − Invest              150,00   (3 Posten à 50,00)
+ *   = Tagesgeld           350,00
  */
 function probeDaten(): AppDaten {
   const daten = startDaten();
-  // 17 Posten, Summe genau 100000 Cent: 16 × 5000 + 1 × 20000.
-  const fixkosten = daten.fixkosten.map((p, i) => ({ ...p, betragCent: i === 0 ? 20000 : 5000 }));
+  // 15 Posten, Summe genau 100000 Cent: 14 × 5000 + 1 × 30000.
+  const fixkosten = daten.fixkosten.map((p, i) => ({ ...p, betragCent: i === 0 ? 30000 : 5000 }));
+  const invest = daten.invest.map((p) => ({ ...p, betragCent: 5000 }));
   return {
     ...daten,
     fixkosten,
+    invest,
     einstellungen: { ...daten.einstellungen, einkommenCent: 200000, studiumCent: 20000 },
+  };
+}
+
+/** Probedaten mit einer abweichenden Anlage-Liste. */
+function mitInvest(...betraege: number[]): AppDaten {
+  return {
+    ...probeDaten(),
+    invest: betraege.map((betragCent, i) => ({ id: `inv${i}`, name: `Anlage ${i}`, betragCent })),
   };
 }
 
@@ -37,7 +46,7 @@ function mitEinstellungen(teil: Partial<AppDaten['einstellungen']>): AppDaten {
 /** Die Invariante gilt für JEDE Eingabe — deshalb steht sie als eigene Hilfsprüfung hier. */
 function pruefeInvariante(v: Verteilung): void {
   expect(
-    v.fixkostenCent + v.studiumCent + v.freizeitCent + v.etfZusatzCent + v.uebrigCent,
+    v.fixkostenCent + v.studiumCent + v.freizeitCent + v.investCent + v.uebrigCent,
   ).toBe(v.einkommenCent);
 }
 
@@ -51,9 +60,8 @@ describe('berechneVerteilung — PFLICHT-TESTFALL', () => {
     expect(v.studiumCent).toBe(20000); //     200,00 €
     expect(v.verfuegbarCent).toBe(80000); //  800,00 €
     expect(v.freizeitCent).toBe(30000); //     300,00 €
-    expect(v.etfZusatzCent).toBe(5000); //      50,00 €
-    expect(v.uebrigCent).toBe(45000); //       450,00 €  ← Tagesgeld
-    expect(v.etfGesamtCent).toBe(15000); //    150,00 €
+    expect(v.investCent).toBe(15000); //       150,00 €
+    expect(v.uebrigCent).toBe(35000); //       350,00 €  ← Tagesgeld
     expect(v.unterdeckung).toBe(false);
   });
 
@@ -80,7 +88,7 @@ describe('berechneVerteilung — Randfälle', () => {
     const daten = { ...probeDaten(), fixkosten: [] };
     const v = berechneVerteilung(daten);
     expect(v.fixkostenCent).toBe(0);
-    expect(v.uebrigCent).toBe(145000); // 200000 - 20000 - 30000 - 5000
+    expect(v.uebrigCent).toBe(135000); // 200000 - 20000 - 30000 - 15000
     expect(v.unterdeckung).toBe(false);
     pruefeInvariante(v);
   });
@@ -88,7 +96,7 @@ describe('berechneVerteilung — Randfälle', () => {
   it('Einkommen 0 → volle Unterdeckung', () => {
     const v = berechneVerteilung(mitEinstellungen({ einkommenCent: 0 }));
     expect(v.einkommenCent).toBe(0);
-    expect(v.uebrigCent).toBe(-155000); // 0 - 100000 - 20000 - 30000 - 5000
+    expect(v.uebrigCent).toBe(-165000); // 0 - 100000 - 20000 - 30000 - 15000
     expect(v.unterdeckung).toBe(true);
     pruefeInvariante(v);
   });
@@ -97,17 +105,16 @@ describe('berechneVerteilung — Randfälle', () => {
     const daten: AppDaten = {
       ...startDaten(),
       fixkosten: [],
+      invest: [],
       einstellungen: {
         einkommenCent: 0,
         studiumCent: 0,
         freizeitCent: 0,
-        etfZusatzCent: 0,
-        etfInFixkostenCent: 0,
       },
     };
     const v = berechneVerteilung(daten);
     expect(v.uebrigCent).toBe(0);
-    expect(v.etfGesamtCent).toBe(0);
+    expect(v.investCent).toBe(0);
     expect(v.unterdeckung).toBe(false);
     pruefeInvariante(v);
   });
@@ -120,7 +127,7 @@ describe('berechneVerteilung — Randfälle', () => {
     ];
     const v = berechneVerteilung(daten);
     expect(v.fixkostenCent).toBe(60000);
-    expect(v.uebrigCent).toBe(85000); // 200000 - 60000 - 20000 - 30000 - 5000
+    expect(v.uebrigCent).toBe(75000); // 200000 - 60000 - 20000 - 30000 - 15000
     pruefeInvariante(v);
   });
 
@@ -134,13 +141,13 @@ describe('berechneVerteilung — Randfälle', () => {
     const v = berechneVerteilung(
       mitEinstellungen({ einkommenCent: 99999999999, studiumCent: 1000000000 }),
     );
-    expect(v.uebrigCent).toBe(99999999999 - 100000 - 1000000000 - 30000 - 5000);
+    expect(v.uebrigCent).toBe(99999999999 - 100000 - 1000000000 - 30000 - 15000);
     expect(Number.isSafeInteger(v.uebrigCent)).toBe(true);
     pruefeInvariante(v);
   });
 
-  it('Freizeit + ETF-Zusatz übersteigen das Verfügbare', () => {
-    const v = berechneVerteilung(mitEinstellungen({ freizeitCent: 70000, etfZusatzCent: 20000 }));
+  it('Freizeit + Invest übersteigen das Verfügbare', () => {
+    const v = berechneVerteilung({ ...mitInvest(20000), einstellungen: { ...probeDaten().einstellungen, freizeitCent: 70000 } });
     // Verfügbar 80000, verteilt werden 90000
     expect(v.uebrigCent).toBe(-10000);
     expect(v.unterdeckung).toBe(true);
@@ -155,14 +162,22 @@ describe('berechneVerteilung — Randfälle', () => {
   });
 
   it('uebrigCent === 0 gilt nicht als Unterdeckung', () => {
-    const v = berechneVerteilung(mitEinstellungen({ freizeitCent: 75000 }));
-    expect(v.uebrigCent).toBe(0); // 80000 - 75000 - 5000
+    const v = berechneVerteilung(mitEinstellungen({ freizeitCent: 65000 }));
+    expect(v.uebrigCent).toBe(0); // 80000 - 65000 - 15000
     expect(v.unterdeckung).toBe(false);
   });
 
-  it('etfGesamtCent ist etfInFixkosten + etfZusatz, unabhängig von der Fixkostenliste', () => {
-    const v = berechneVerteilung(mitEinstellungen({ etfInFixkostenCent: 25000, etfZusatzCent: 7500 }));
-    expect(v.etfGesamtCent).toBe(32500);
+  it('investCent ist die Summe der Anlageliste', () => {
+    expect(berechneVerteilung(mitInvest(2500, 7500, 12500)).investCent).toBe(22500);
+    expect(berechneVerteilung(mitInvest()).investCent).toBe(0);
+  });
+
+  it('fehlende Anlageliste (Altdaten) zählt als 0 und wirft nicht', () => {
+    const daten = { ...probeDaten(), invest: undefined as never };
+    const v = berechneVerteilung(daten);
+    expect(v.investCent).toBe(0);
+    expect(v.uebrigCent).toBe(50000); // 80000 - 30000 - 0
+    pruefeInvariante(v);
   });
 
   it('kaputte Werte kippen weder Ergebnis noch Invariante', () => {
@@ -185,12 +200,15 @@ describe('berechneVerteilung — Randfälle', () => {
           name: `f${k}`,
           betragCent: zufall(),
         })),
+        invest: Array.from({ length: 3 }, (_, k) => ({
+          id: `i${k}`,
+          name: `i${k}`,
+          betragCent: zufall(),
+        })),
         einstellungen: {
           einkommenCent: zufall(),
           studiumCent: zufall(),
           freizeitCent: zufall(),
-          etfZusatzCent: zufall(),
-          etfInFixkostenCent: zufall(),
         },
       };
       pruefeInvariante(berechneVerteilung(daten));
@@ -199,10 +217,10 @@ describe('berechneVerteilung — Randfälle', () => {
 });
 
 describe('sparquote', () => {
-  it('Probedaten: (150,00 ETF + 450,00 Tagesgeld) / 2.000,00 = 30 %', () => {
+  it('Probedaten: (150,00 Invest + 350,00 Tagesgeld) / 2.000,00 = 25 %', () => {
     const q = sparquote(berechneVerteilung(probeDaten()));
-    expect(q).toBeCloseTo(60000 / 200000, 10);
-    expect(q).toBeCloseTo(0.3, 10);
+    expect(q).toBeCloseTo(50000 / 200000, 10);
+    expect(q).toBeCloseTo(0.25, 10);
   });
 
   it('Einkommen 0 → 0 statt Division durch null', () => {
@@ -219,7 +237,7 @@ describe('sparquote', () => {
     const faelle = [
       startDaten(),
       mitEinstellungen({ freizeitCent: 1000000 }), // starke Unterdeckung
-      mitEinstellungen({ etfInFixkostenCent: 900000 }), // absurd hohe ETF-Rate
+      mitInvest(900000), // absurd hohe Anlagerate
       { ...startDaten(), fixkosten: [] },
     ];
     for (const daten of faelle) {

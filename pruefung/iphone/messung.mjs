@@ -216,7 +216,12 @@ for (const schema of SCHEMATA) {
         }
       }
 
+      // Der Zoom-Sprung entsteht nur bei Feldern, in die man TEXT eintippt.
+      // Ein Schieberegler, eine Checkbox oder ein Dateifeld nehmen keine
+      // Tastatureingabe entgegen — dort gibt es nichts, wobei iOS zoomen könnte.
+      const OHNE_TASTATUR = ['range', 'checkbox', 'radio', 'file', 'button', 'submit', 'color'];
       for (const f of d.felder) {
+        if (OHNE_TASTATUR.includes(f.typ)) continue;
         if (f.schrift < MIN_SCHRIFT - 0.01) {
           melde('BLOCKER', 'Zoom-Sprung beim Fokus', `${wo}: <${f.tag} ${f.typ}> "${f.name}" ${f.schrift}px (min ${MIN_SCHRIFT})`);
         }
