@@ -45,7 +45,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
   const meldung = meldungszeile();
 
   // ------------------------------------------------------------- Summe
-  const summenKarte = karte('Monatliche Verpflichtungen');
+  const summenKarte = karte('Monat im Überblick');
   const summenBereich = el('div');
   summenKarte.appendChild(summenBereich);
   wurzel.appendChild(summenKarte);
@@ -199,7 +199,22 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     );
     summenBereich.appendChild(wertZeile('− Studiengebühren', formatCent(studium)));
     summenBereich.appendChild(
-      wertZeile('Bleibt übrig', formatCent(bleibt), `wertzeile-stark${bleibt < 0 ? ' wertzeile-minus' : ''}`),
+      wertZeile('Verfügbar', formatCent(bleibt), `wertzeile-stark${bleibt < 0 ? ' wertzeile-minus' : ''}`),
+    );
+
+    // Invest steht bewusst UNTER dem Verfügbaren, nicht bei den Fixkosten:
+    // es ist keine Verpflichtung, sondern eine Entscheidung. Aber es geht vom
+    // selben Topf ab, deshalb gehört es in dieselbe Aufstellung.
+    summenBereich.appendChild(
+      wertZeile(`− Invest (${investZeilen.length} Posten)`, formatCent(invest)),
+    );
+    const fuerRest = bleibt - invest;
+    summenBereich.appendChild(
+      wertZeile(
+        'Für Freizeit & Rücklage',
+        formatCent(fuerRest),
+        `wertzeile-stark${fuerRest < 0 ? ' wertzeile-minus' : ''}`,
+      ),
     );
   }
 
