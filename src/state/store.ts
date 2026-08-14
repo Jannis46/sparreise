@@ -22,6 +22,7 @@ import type {
   Fixkostenposten,
   Investposten,
   Monatseintrag,
+  Sparposten,
 } from '../domain/types';
 import { neueId } from '../domain/types';
 import type { StorageAdapter, StorageTier } from '../storage/adapter';
@@ -193,6 +194,34 @@ export class Store {
     return this.aktualisieren((d) => ({
       ...d,
       invest: this.investVon(d).filter((p) => p.id !== id),
+    }));
+  }
+
+  // ------------------------------------------------------------------ Sparen
+
+  /** `sparen` fehlt in Sicherungen vor Schema 5 — defensiv als leere Liste lesen. */
+  private sparenVon(d: Readonly<AppDaten>): Sparposten[] {
+    return Array.isArray(d.sparen) ? d.sparen : [];
+  }
+
+  sparenHinzufuegen(name: string, betragCent: number): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      sparen: [...this.sparenVon(d), { id: neueId(), name, betragCent }],
+    }));
+  }
+
+  sparenAendern(id: string, teil: Partial<Omit<Sparposten, 'id'>>): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      sparen: this.sparenVon(d).map((p) => (p.id === id ? { ...p, ...teil } : p)),
+    }));
+  }
+
+  sparenEntfernen(id: string): Promise<void> {
+    return this.aktualisieren((d) => ({
+      ...d,
+      sparen: this.sparenVon(d).filter((p) => p.id !== id),
     }));
   }
 

@@ -66,6 +66,16 @@ MIGRATIONEN.set(2, (d) => ({ ...d, schemaVersion: 3 }));
  * betreffenden Posten stehen weiterhin in den Fixkosten und werden dort auch
  * weiterhin gezählt. Wer sie umsortieren will, verschiebt sie von Hand.
  */
+/**
+ * v4 → v5: Rücklage wird eine eigene Liste.
+ *
+ * Vorher war das Tagesgeld der Rest der Verteilung — was nach Freizeit und Invest
+ * übrig blieb. Jetzt lässt sich ein fester Betrag angeben; erst was danach bleibt,
+ * gilt als unverplant. Alte Sicherungen bekommen eine **leere** Liste: dann ist
+ * `uebrigCent` weiterhin der volle Rest, die Verteilung rechnet unverändert.
+ */
+MIGRATIONEN.set(4, (d) => ({ ...d, schemaVersion: 5, sparen: [] }));
+
 MIGRATIONEN.set(3, (d) => {
   const alt = istObjekt(d['einstellungen']) ? d['einstellungen'] : {};
   const zusatz = ganzzahl(alt['etfZusatzCent'], -MAX_CENT, MAX_CENT) ?? 0;
@@ -250,26 +260,32 @@ function migriereIntern(roh: unknown): AppDaten | null {
   if (!Array.isArray(rohFixkosten) || !Array.isArray(rohMonate)) return null;
   if (rohFixkosten.length > MAX_FIXKOSTEN || rohMonate.length > MAX_MONATE) return null;
 
-  // `einnahmen` gibt es erst ab Schema 3, `invest` erst ab Schema 4. Fehlt der
+  // `einnahmen` gibt es erst ab Schema 3, `invest` ab 4, `sparen` ab 5. Fehlt der
   // Schlüssel, ist die Liste leer — kein Fehler, sondern der Normalfall bei
   // älteren Sicherungen.
   const rohEinnahmen = daten['einnahmen'] === undefined ? [] : daten['einnahmen'];
   const rohInvest = daten['invest'] === undefined ? [] : daten['invest'];
+  const rohSparen = daten['sparen'] === undefined ? [] : daten['sparen'];
   if (!Array.isArray(rohEinnahmen) || rohEinnahmen.length > MAX_FIXKOSTEN) return null;
   if (!Array.isArray(rohInvest) || rohInvest.length > MAX_FIXKOSTEN) return null;
+  if (!Array.isArray(rohSparen) || rohSparen.length > MAX_FIXKOSTEN) return null;
 
   const vergebeneIds = new Set<string>();
   const fixkosten = listePruefen(rohFixkosten, (e) => fixkostenPruefen(e, vergebeneIds));
   const einnahmen = listePruefen(rohEinnahmen, (e) => einnahmePruefen(e, vergebeneIds));
   const invest = listePruefen(rohInvest, (e) => einnahmePruefen(e, vergebeneIds));
+  const sparen = listePruefen(rohSparen, (e) => einnahmePruefen(e, vergebeneIds));
   const monate = listePruefen(rohMonate, (e) => monatPruefen(e, vergebeneIds));
-  if (fixkosten === null || einnahmen === null || invest === null || monate === null) return null;
+  if (fixkosten === null || einnahmen === null || invest === null || sparen === null || monate === null) {
+    return null;
+  }
 
   return {
     schemaVersion: SCHEMA_VERSION,
     fixkosten,
     einnahmen,
     invest,
+    sparen,
     einstellungen: einstellungenPruefen(daten['einstellungen']),
     monate,
   };

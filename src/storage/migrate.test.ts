@@ -209,7 +209,7 @@ describe('migriere — Feldprüfung im Detail', () => {
     expect(daten?.einstellungen.freizeitCent).toBe(EINSTELLUNGEN_START.freizeitCent);
   });
 
-  it('migriert Schema 3 auf 4: etfZusatz wird zu einer Anlageposition', () => {
+  it('migriert Schema 3 durch bis 5: etfZusatz wird zu einer Anlageposition', () => {
     const daten = migriere({
       schemaVersion: 3,
       fixkosten: [{ id: 'f1', name: 'Miete', betragCent: 70000 }],
@@ -222,7 +222,7 @@ describe('migriere — Feldprüfung im Detail', () => {
         etfInFixkostenCent: 10000,
       },
     });
-    expect(daten?.schemaVersion).toBe(4);
+    expect(daten?.schemaVersion).toBe(5);
     // Genau der Betrag, der vorher vom Verfügbaren abging — die Verteilung
     // rechnet nach der Migration identisch weiter.
     expect(daten?.invest).toHaveLength(1);

@@ -5,7 +5,7 @@
  * Feldnamen tragen konsequent das Suffix `Cent`.
  */
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * Kreditangaben zu einem Fixkostenposten. Optional — die meisten Posten sind
@@ -70,6 +70,20 @@ export interface Investposten {
   betragCent: number;
 }
 
+/**
+ * Sparposten — feste monatliche Rücklage auf Konten, aus denen wieder entnommen
+ * wird: Tagesgeld, Notgroschen, Urlaubskasse.
+ *
+ * Getrennt von `Investposten`, weil die Absicht eine andere ist: Invest wird
+ * angelegt und liegen gelassen, Sparen ist Geld für später, aber greifbar.
+ * Beide gehen vom Verfügbaren ab, beide sind kein Verbrauch.
+ */
+export interface Sparposten {
+  id: string;
+  name: string;
+  betragCent: number;
+}
+
 export interface Einstellungen {
   einkommenCent: number; // Netto
   studiumCent: number; // Studiengebühren
@@ -83,6 +97,8 @@ export interface AppDaten {
   einnahmen: Einnahmeposten[];
   /** Monatliche Anlage. Geht vom Verfügbaren ab wie das Freizeit-Budget. */
   invest: Investposten[];
+  /** Feste monatliche Rücklage. Was nach Freizeit, Invest und Sparen bleibt, ist nicht verplant. */
+  sparen: Sparposten[];
   einstellungen: Einstellungen;
   monate: Monatseintrag[];
 }
@@ -128,6 +144,14 @@ const INVEST_START: ReadonlyArray<readonly [name: string, betragCent: number]> =
   ['ETF zusätzlich', 0],
 ];
 
+/**
+ * Startwerte der Rücklage. Wie beim Invest nur die Kategorien, keine Beträge.
+ */
+const SPAREN_START: ReadonlyArray<readonly [name: string, betragCent: number]> = [
+  ['Tagesgeld (Rücklage)', 0],
+  ['Urlaub', 0],
+];
+
 /** Anzahl der vorgegebenen Fixkostenkategorien. Testanker. */
 export const FIXKOSTEN_START_ANZAHL = 15;
 /** Anzahl der vorgegebenen Investpositionen. Testanker. */
@@ -155,6 +179,7 @@ export function startDaten(): AppDaten {
     })),
     einnahmen: [],
     invest: INVEST_START.map(([name, betragCent]) => ({ id: neueId(), name, betragCent })),
+    sparen: SPAREN_START.map(([name, betragCent]) => ({ id: neueId(), name, betragCent })),
     einstellungen: { ...EINSTELLUNGEN_START },
     monate: [],
   };

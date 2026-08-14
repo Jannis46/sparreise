@@ -9,7 +9,8 @@ import { ganzzahlig } from './geld';
 /**
  * Ergebnis der Monatsverteilung. Alle Werte Cent-Integer.
  * Invariante (per Test abgesichert):
- *   fixkostenCent + studiumCent + freizeitCent + investCent + uebrigCent === einkommenCent
+ *   fixkostenCent + studiumCent + freizeitCent + investCent + sparenCent + uebrigCent
+ *     === einkommenCent
  */
 export interface Verteilung {
   /** Netto-Gehalt plus alle festen Zusatzeinnahmen. Basis der gesamten Rechnung. */
@@ -34,7 +35,12 @@ export interface Verteilung {
    * Konstante wieder herausgerechnet; jetzt sind es echte Posten.
    */
   investCent: number;
-  /** Rest, der aufs Tagesgeld geht. Kann negativ sein (Unterdeckung). */
+  /** Summe der Sparposten — feste Rücklage. */
+  sparenCent: number;
+  /**
+   * Was nach Freizeit, Invest und Sparen bleibt: nicht verplantes Geld.
+   * Kann negativ sein (Unterdeckung).
+   */
   uebrigCent: number;
   /** true, wenn uebrigCent < 0. */
   unterdeckung: boolean;
@@ -75,9 +81,17 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
     }
   }
 
-  // Verfügbar = Einkommen − (Fixkosten + Studium); davon gehen Freizeit und Invest ab.
+  let sparenCent = 0;
+  if (Array.isArray(daten.sparen)) {
+    for (const posten of daten.sparen) {
+      if (posten) sparenCent += ganzzahlig(posten.betragCent);
+    }
+  }
+
+  // Verfügbar = Einkommen − (Fixkosten + Studium).
+  // Davon gehen Freizeit, Invest und die feste Rücklage ab; der Rest ist unverplant.
   const verfuegbarCent = einkommenCent - (fixkostenCent + studiumCent);
-  const uebrigCent = verfuegbarCent - freizeitCent - investCent; // = Tagesgeld
+  const uebrigCent = verfuegbarCent - freizeitCent - investCent - sparenCent;
 
   return {
     einkommenCent,
@@ -88,6 +102,7 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
     verfuegbarCent,
     freizeitCent,
     investCent,
+    sparenCent,
     uebrigCent,
     unterdeckung: uebrigCent < 0,
   };
@@ -100,9 +115,11 @@ export function berechneVerteilung(daten: Readonly<AppDaten>): Verteilung {
  * an `Verteilung.unterdeckung`, nicht an einer negativen Quote.
  */
 export function sparquote(verteilung: Verteilung): number {
-  const { einkommenCent, investCent, uebrigCent } = verteilung;
+  // Gespart ist alles, was nicht verbraucht wird: Anlage, feste Rücklage und
+  // der unverplante Rest — der landet faktisch ebenfalls auf dem Konto.
+  const { einkommenCent, investCent, sparenCent, uebrigCent } = verteilung;
   if (!Number.isFinite(einkommenCent) || einkommenCent <= 0) return 0;
-  const quote = (investCent + uebrigCent) / einkommenCent;
+  const quote = (investCent + sparenCent + uebrigCent) / einkommenCent;
   if (!Number.isFinite(quote)) return 0;
   return Math.min(1, Math.max(0, quote));
 }

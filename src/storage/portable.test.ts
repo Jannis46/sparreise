@@ -100,6 +100,7 @@ describe('importierenAusJson', () => {
       fixkosten: daten.fixkosten,
       einnahmen: daten.einnahmen,
       invest: daten.invest,
+      sparen: daten.sparen,
       schemaVersion: daten.schemaVersion,
     });
     expect(importierenAusJson(gedreht)).toEqual(daten);

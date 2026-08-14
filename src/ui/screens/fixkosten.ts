@@ -52,6 +52,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
   // ------------------------------------------------------------- Posten
   const postenKarte = karte('Fixkosten');
+  postenKarte.classList.add('karte-fixkosten');
   const postenBereich = el('div', 'posten-liste');
   postenKarte.appendChild(postenBereich);
   postenKarte.appendChild(
@@ -89,6 +90,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
   // ------------------------------------------------------------- Weitere Einnahmen
   const einnahmenKarte = karte('Weitere Einnahmen');
+  einnahmenKarte.classList.add('karte-einnahmen');
   einnahmenKarte.appendChild(
     el(
       'p',
@@ -112,6 +114,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
   // ------------------------------------------------------------- Invest
   const investKarte = karte('Invest');
+  investKarte.classList.add('karte-invest');
   investKarte.appendChild(
     el(
       'p',
@@ -134,6 +137,32 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
   let investZeilen: PostenZeile[] = [];
   let gezeichneteInvestIds = '';
+
+  // ------------------------------------------------------------- Sparen
+  const sparenKarte = karte('Sparen');
+  sparenKarte.classList.add('karte-sparen');
+  sparenKarte.appendChild(
+    el(
+      'p',
+      'hinweis',
+      'Feste Rücklage pro Monat — Tagesgeld, Notgroschen, Urlaubskasse. Anders als Invest bleibt das Geld greifbar.',
+    ),
+  );
+  const sparenBereich = el('div', 'posten-liste');
+  sparenKarte.appendChild(sparenBereich);
+  const sparenSumme = el('div', 'invest-summe');
+  sparenKarte.appendChild(sparenSumme);
+  sparenKarte.appendChild(
+    knopf('Sparposten hinzufügen', 'knopf-zweit knopf-breit', () => {
+      void store.sparenHinzufuegen('', 0).catch((fehler: unknown) => {
+        meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+      });
+    }),
+  );
+  wurzel.appendChild(sparenKarte);
+
+  let sparZeilen: PostenZeile[] = [];
+  let gezeichneteSparIds = '';
 
   // ------------------------------------------------------------- Rechnen
 
@@ -173,6 +202,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     const einkommen = gehalt + weitere;
     const bleibt = einkommen - fixkosten - studium;
     const invest = summeInvest();
+    const sparen = summeSparen();
 
     leeren(investSumme);
     investSumme.appendChild(
@@ -181,6 +211,16 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     if (einkommen > 0) {
       investSumme.appendChild(
         wertZeile('Anteil am Einkommen', `${Math.round((invest / einkommen) * 100)} %`),
+      );
+    }
+
+    leeren(sparenSumme);
+    sparenSumme.appendChild(
+      wertZeile(`Rücklage pro Monat (${sparZeilen.length})`, formatCent(sparen), 'wertzeile-stark'),
+    );
+    if (einkommen > 0) {
+      sparenSumme.appendChild(
+        wertZeile('Anteil am Einkommen', `${Math.round((sparen / einkommen) * 100)} %`),
       );
     }
 
@@ -208,10 +248,13 @@ export function bauFixkosten(kontext: UiKontext): Screen {
     summenBereich.appendChild(
       wertZeile(`− Invest (${investZeilen.length} Posten)`, formatCent(invest)),
     );
-    const fuerRest = bleibt - invest;
+    summenBereich.appendChild(
+      wertZeile(`− Sparen (${sparZeilen.length} Posten)`, formatCent(sparen)),
+    );
+    const fuerRest = bleibt - invest - sparen;
     summenBereich.appendChild(
       wertZeile(
-        'Für Freizeit & Rücklage',
+        'Für Freizeit & Sonstiges',
         formatCent(fuerRest),
         `wertzeile-stark${fuerRest < 0 ? ' wertzeile-minus' : ''}`,
       ),
@@ -348,6 +391,69 @@ export function bauFixkosten(kontext: UiKontext): Screen {
 
     zeichnen();
     return aufklapp;
+  }
+
+  // ------------------------------------------------------------- Sparen-Liste
+
+  function summeSparen(): number {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.sparen) ? daten.sparen : [];
+    let summe = 0;
+    for (const zeile of sparZeilen) {
+      const posten = liste.find((p) => p.id === zeile.id);
+      summe += feldOderGespeichert(zeile.betrag, posten ? posten.betragCent : 0);
+    }
+    return summe;
+  }
+
+  function sparenZeichnen(): void {
+    const daten = store.getDaten();
+    const liste = Array.isArray(daten.sparen) ? daten.sparen : [];
+    leeren(sparenBereich);
+    sparZeilen = [];
+
+    if (liste.length === 0) {
+      sparenBereich.appendChild(
+        el('p', 'leer-hinweis', 'Keine feste Rücklage. Was übrig bleibt, gilt als nicht verplant.'),
+      );
+    }
+
+    for (const posten of liste) {
+      const block = el('div', 'posten');
+
+      const name = textFeld({
+        label: 'Bezeichnung',
+        wert: posten.name,
+        platzhalter: 'z. B. Tagesgeld',
+        beiAenderung: (wert) => {
+          void store.sparenAendern(posten.id, { name: wert });
+        },
+      });
+
+      const betrag = betragFeld({
+        label: 'Betrag pro Monat',
+        wertCent: posten.betragCent,
+        beiGueltig: (cent) => {
+          void store.sparenAendern(posten.id, { betragCent: cent });
+        },
+        beiEingabe: summeZeichnen,
+      });
+
+      const fuss = el('div', 'posten-fuss');
+      fuss.appendChild(betrag.el);
+      fuss.appendChild(
+        symbolKnopf('×', `${posten.name || 'Sparposten'} löschen`, () => {
+          if (!bestaetigen(`"${posten.name || 'Sparposten ohne Namen'}" wirklich löschen?`)) return;
+          void store.sparenEntfernen(posten.id).catch((fehler: unknown) => {
+            meldung.zeigen(nutzerTextAus(fehler), 'fehler');
+          });
+        }),
+      );
+
+      block.append(name.el, fuss);
+      sparenBereich.appendChild(block);
+      sparZeilen.push({ id: posten.id, name, betrag });
+    }
   }
 
   // ------------------------------------------------------------- Invest-Liste
@@ -535,6 +641,7 @@ export function bauFixkosten(kontext: UiKontext): Screen {
   listeZeichnen();
   einnahmenZeichnen();
   investZeichnen();
+  sparenZeichnen();
   summeZeichnen();
 
   return {
@@ -557,6 +664,11 @@ export function bauFixkosten(kontext: UiKontext): Screen {
       if (investIds !== gezeichneteInvestIds) {
         investZeichnen();
         gezeichneteInvestIds = investIds;
+      }
+      const sparIds = (Array.isArray(daten.sparen) ? daten.sparen : []).map((p) => p.id).join('|');
+      if (sparIds !== gezeichneteSparIds) {
+        sparenZeichnen();
+        gezeichneteSparIds = sparIds;
       }
       summeZeichnen();
     },

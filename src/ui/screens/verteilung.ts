@@ -48,7 +48,7 @@ export function bauVerteilung(kontext: UiKontext): Screen {
     el(
       'p',
       'hinweis',
-      'Die monatliche Anlage bearbeitest du unter „Fixkosten" im Bereich Invest.',
+      'Anlage und Rücklage bearbeitest du unter „Fixkosten" in den Bereichen Invest und Sparen.',
     ),
   );
   wurzel.appendChild(stellKarte);
@@ -84,9 +84,9 @@ export function bauVerteilung(kontext: UiKontext): Screen {
         el(
           'span',
           'banner-text',
-          `Freizeit und Invest übersteigen das Verfügbare um ${formatCent(
+          `Freizeit, Invest und Sparen übersteigen das Verfügbare um ${formatCent(
             Math.abs(verteilung.uebrigCent),
-          )}. Fürs Tagesgeld bleibt nichts übrig.`,
+          )}. Das geht sich so nicht aus.`,
         ),
       );
       warnBereich.appendChild(box);
@@ -105,17 +105,20 @@ export function bauVerteilung(kontext: UiKontext): Screen {
     );
     ergebnisBereich.appendChild(wertZeile('− Freizeit-Budget', formatCent(verteilung.freizeitCent)));
     ergebnisBereich.appendChild(wertZeile('− Invest', formatCent(verteilung.investCent)));
+    ergebnisBereich.appendChild(wertZeile('− Sparen', formatCent(verteilung.sparenCent)));
     ergebnisBereich.appendChild(
       wertZeile(
-        'Tagesgeld (Rest)',
+        'Nicht verplant',
         formatCent(verteilung.uebrigCent),
         `wertzeile-stark${verteilung.unterdeckung ? ' wertzeile-minus' : ''}`,
       ),
     );
+    // Alles, was nicht verbraucht wird — auch das Unverplante landet faktisch
+    // auf dem Konto, solange es nicht ausgegeben wird.
     ergebnisBereich.appendChild(
       wertZeile(
-        'Davon gespart (Invest + Tagesgeld)',
-        formatCent(verteilung.investCent + verteilung.uebrigCent),
+        'Davon gespart',
+        formatCent(verteilung.investCent + verteilung.sparenCent + verteilung.uebrigCent),
         'wertzeile-stark',
       ),
     );
@@ -130,7 +133,8 @@ export function bauVerteilung(kontext: UiKontext): Screen {
             { label: 'Studium', wertCent: verteilung.studiumCent },
             { label: 'Freizeit', wertCent: verteilung.freizeitCent },
             { label: 'Invest', wertCent: verteilung.investCent },
-            { label: 'Tagesgeld', wertCent: verteilung.uebrigCent },
+            { label: 'Sparen', wertCent: verteilung.sparenCent },
+            { label: 'Unverplant', wertCent: verteilung.uebrigCent },
           ],
         },
         { breite, hoehe: 214 },
